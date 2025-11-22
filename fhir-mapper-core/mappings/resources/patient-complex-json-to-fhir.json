@@ -43,7 +43,7 @@
 			"sourcePath": "ssn",
 			"targetPath": "identifier[1].value",
 			"dataType": "string",
-			"transformExpression": "fn:replace(value, '-', '')",
+			"transformExpression": "fn:removeHyphens(value)",
 			"condition": "ssn != null && ssn != ''",
 			"required": false,
 			"description": "SSN without dashes"
@@ -399,8 +399,8 @@
 			"sourcePath": null,
 			"targetPath": "managingOrganization.reference",
 			"dataType": "string",
-			"transformExpression": "fn:concat('Organization/', $ctx.organizationId)",
-			"condition": "$ctx.organizationId != null",
+			"condition": "organizationId != null",
+			"transformExpression": "fn.concat('Organization/', organizationId)",
 			"required": false
 		}
 	]

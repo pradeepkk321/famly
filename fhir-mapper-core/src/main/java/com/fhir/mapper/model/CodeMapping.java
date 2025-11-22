@@ -24,4 +24,13 @@ public class CodeMapping {
 
     public String getDisplay() { return display; }
     public void setDisplay(String display) { this.display = display; }
+    
+    @Override
+    public String toString() {
+        return "CodeMapping{" +
+            "sourceCode='" + sourceCode + '\'' +
+            ", targetCode='" + targetCode + '\'' +
+            ", display='" + display + '\'' +
+            '}';
+    }
 }

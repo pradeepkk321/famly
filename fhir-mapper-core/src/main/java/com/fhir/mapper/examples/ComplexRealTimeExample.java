@@ -25,16 +25,16 @@ public class ComplexRealTimeExample {
 		ResourceMapping mapping = registry.findBySourceAndDirection("ComplexPatientDTO", MappingDirection.JSON_TO_FHIR);
 		// Transform
 		String inputJson = getComplexInput(); // Your complex JSON above
-		Patient patient = engine.jsonToFhirResource(inputJson, mapping, context, Patient.class);
+//		Patient patient = engine.jsonToFhirResource(inputJson, mapping, context, Patient.class);
 		
 		
 		System.out.println("\n\n Patient JSON: \n " + engine.jsonToFhirJson(inputJson, mapping, context));
 		
 		// Verify results
-		System.out.println("Patient ID: " + patient.getIdentifierFirstRep().getValue());
-		System.out.println("Name: " + patient.getNameFirstRep().getNameAsSingleString());
-		System.out.println("Gender: " + patient.getGender());
-		System.out.println("Extensions: " + patient.getExtension().size());
+//		System.out.println("Patient ID: " + patient.getIdentifierFirstRep().getValue());
+//		System.out.println("Name: " + patient.getNameFirstRep().getNameAsSingleString());
+//		System.out.println("Gender: " + patient.getGender());
+//		System.out.println("Extensions: " + patient.getExtension().size());
 	}
 	
 	public static String getComplexInput() {

@@ -40,4 +40,15 @@ public class TransformationContext {
     public Object getVariable(String key) {
         return variables.get(key);
     }
+    
+    @Override
+    public String toString() {
+        return "TransformationContext{" +
+            "organizationId='" + organizationId + '\'' +
+            ", facilityId='" + facilityId + '\'' +
+            ", tenantId='" + tenantId + '\'' +
+            ", variablesCount=" + (variables != null ? variables.size() : 0) +
+            ", settingsCount=" + (settings != null ? settings.size() : 0) +
+            '}';
+    }
 }

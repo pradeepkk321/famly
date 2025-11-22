@@ -39,5 +39,18 @@ public class ResourceMapping {
     public void setFieldMappings(List<FieldMapping> fieldMappings) { 
         this.fieldMappings = fieldMappings; 
     }
+    
+    @Override
+    public String toString() {
+        return "ResourceMapping{" +
+            "id='" + id + '\'' +
+            ", name='" + name + '\'' +
+            ", sourceType='" + sourceType + '\'' +
+            ", targetType='" + targetType + '\'' +
+            ", version='" + version + '\'' +
+            ", direction=" + direction +
+            ", fieldMappingsCount=" + (fieldMappings != null ? fieldMappings.size() : 0) +
+            '}';
+    }
 }
 

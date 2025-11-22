@@ -60,4 +60,14 @@ public class MappingRegistry {
     public void addLookupTable(CodeLookupTable table) {
         lookupTables.put(table.getId(), table);
     }
+    
+    @Override
+    public String toString() {
+        return "MappingRegistry{" +
+            "fhirVersion='" + fhirVersion + '\'' +
+            ", resourceMappingsCount=" + (resourceMappings != null ? resourceMappings.size() : 0) +
+            ", lookupTablesCount=" + (lookupTables != null ? lookupTables.size() : 0) +
+            ", loadedTimestamp=" + loadedTimestamp +
+            '}';
+    }
 }

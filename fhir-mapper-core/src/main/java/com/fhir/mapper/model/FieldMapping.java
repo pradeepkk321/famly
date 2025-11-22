@@ -60,4 +60,22 @@ public class FieldMapping {
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    
+    @Override
+    public String toString() {
+        return "FieldMapping{" +
+            "id='" + id + '\'' +
+            ", sourcePath='" + sourcePath + '\'' +
+            ", targetPath='" + targetPath + '\'' +
+            ", dataType='" + dataType + '\'' +
+            ", transformExpression='" + transformExpression + '\'' +
+            ", condition='" + condition + '\'' +
+            ", validator='" + validator + '\'' +
+            ", required=" + required +
+            ", defaultValue='" + defaultValue + '\'' +
+            ", lookupTable='" + lookupTable + '\'' +
+            ", lookupSourceField='" + lookupSourceField + '\'' +
+            ", description='" + description + '\'' +
+            '}';
+    }
 }

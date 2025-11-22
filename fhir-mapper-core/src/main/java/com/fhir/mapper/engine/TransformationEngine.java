@@ -1,19 +1,28 @@
 package com.fhir.mapper.engine;
 
-import com.fhir.mapper.model.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.commons.jexl3.*;
-import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.parser.IParser;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import org.hl7.fhir.instance.model.api.IBaseResource;
 
-import java.util.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fhir.mapper.expression.ExpressionEvaluationException;
+import com.fhir.mapper.expression.MappingExpressionEvaluator;
+import com.fhir.mapper.model.CodeLookupTable;
+import com.fhir.mapper.model.FieldMapping;
+import com.fhir.mapper.model.MappingDirection;
+import com.fhir.mapper.model.MappingRegistry;
+import com.fhir.mapper.model.ResourceMapping;
+import com.fhir.mapper.model.TransformationContext;
+
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.parser.IParser;
 
 /**
  * Core transformation engine for JSON <-> FHIR conversion
  */
 public class TransformationEngine {
-    private final JexlEngine jexlEngine;
+    private final MappingExpressionEvaluator expressionEvaluator;
     private final ObjectMapper objectMapper;
     private final PathNavigator pathNavigator;
     private final ValidationEngine validationEngine;
@@ -25,9 +34,7 @@ public class TransformationEngine {
     }
 
     public TransformationEngine(MappingRegistry mappingRegistry, FhirContext fhirContext) {
-        this.jexlEngine = new JexlBuilder()
-            .namespaces(Map.of("fn", new TransformFunctions()))
-            .create();
+        this.expressionEvaluator = new MappingExpressionEvaluator();
         this.objectMapper = new ObjectMapper();
         this.pathNavigator = new PathNavigator();
         this.validationEngine = new ValidationEngine();
@@ -283,6 +290,11 @@ public class TransformationEngine {
         if (value == null && mapping.getDefaultValue() != null) {
             value = resolveValue(mapping.getDefaultValue(), context);
         }
+        
+        // Transform with context
+        if (mapping.getTransformExpression() != null) {
+            value = applyTransform(value, mapping.getTransformExpression(), source, context);
+        }
 
         // Skip if still null and not required
         if (value == null) {
@@ -298,11 +310,6 @@ public class TransformationEngine {
             value = applyLookup(value, mapping.getLookupTable());
         }
 
-        // Transform with context
-        if (mapping.getTransformExpression() != null) {
-            value = applyTransform(value, mapping.getTransformExpression(), source, context);
-        }
-
         // Convert to proper type based on dataType
         if (mapping.getDataType() != null) {
             value = convertToType(value, mapping.getDataType());
@@ -316,7 +323,7 @@ public class TransformationEngine {
         // Set value in target
         pathNavigator.setValue(target, targetPath, value);
     }
-    
+
     /**
      * Convert value to specified FHIR data type
      */
@@ -400,14 +407,8 @@ public class TransformationEngine {
     private boolean evaluateCondition(String condition, Map<String, Object> source,
                                       TransformationContext context) {
         try {
-            // Replace $ctx variables
-            String resolved = resolveContextInExpression(condition, context);
-            
-            JexlExpression expr = jexlEngine.createExpression(resolved);
-            JexlContext jexlContext = new MapContext(source);
-            Object result = expr.evaluate(jexlContext);
-            return result != null && (Boolean) result;
-        } catch (Exception e) {
+            return expressionEvaluator.evaluateCondition(condition, source, context);
+        } catch (ExpressionEvaluationException e) {
             throw new TransformationException("Condition evaluation failed: " + condition, e);
         }
     }
@@ -418,190 +419,19 @@ public class TransformationEngine {
     private Object applyTransform(Object value, String expression, 
                                   Map<String, Object> source, TransformationContext context) {
         try {
-            // Replace $ctx variables
-            String resolved = resolveContextInExpression(expression, context);
-            
-            JexlExpression expr = jexlEngine.createExpression(resolved);
-            JexlContext jexlContext = new MapContext(source);
-            jexlContext.set("value", value);
-            return expr.evaluate(jexlContext);
-        } catch (Exception e) {
+            return expressionEvaluator.evaluate(expression, value, source, context);
+        } catch (ExpressionEvaluationException e) {
             throw new TransformationException("Transform failed: " + expression, e);
         }
     }
 
     /**
-     * Replace $ctx variables in expressions
+     * Replace $ctx variables in expressions - NO LONGER NEEDED
+     * Context is now available in JEXL as 'ctx' object
      */
+    @Deprecated
     private String resolveContextInExpression(String expression, TransformationContext context) {
-        if (expression == null || !expression.contains("$ctx.")) {
-            return expression;
-        }
-
-        String result = expression;
-        
-        // Replace simple context variables
-        if (context.getOrganizationId() != null) {
-            result = result.replace("$ctx.organizationId", "'" + context.getOrganizationId() + "'");
-        }
-        if (context.getFacilityId() != null) {
-            result = result.replace("$ctx.facilityId", "'" + context.getFacilityId() + "'");
-        }
-        if (context.getTenantId() != null) {
-            result = result.replace("$ctx.tenantId", "'" + context.getTenantId() + "'");
-        }
-
-        // Handle settings (more complex parsing needed for production)
-        // For now, handle simple cases
-        for (Map.Entry<String, String> entry : context.getSettings().entrySet()) {
-            String placeholder = "$ctx.settings['" + entry.getKey() + "']";
-            result = result.replace(placeholder, "'" + entry.getValue() + "'");
-        }
-
-        return result;
-    }
-}
-
-/**
- * Navigate nested map structures using path notation
- */
-class PathNavigator {
-    
-    public Object getValue(Map<String, Object> data, String path) {
-        String[] parts = path.split("\\.");
-        Object current = data;
-
-        for (String part : parts) {
-            if (current == null) return null;
-
-            if (part.contains("[")) {
-                int bracketIdx = part.indexOf('[');
-                String key = part.substring(0, bracketIdx);
-                int index = Integer.parseInt(part.substring(bracketIdx + 1, part.length() - 1));
-
-                current = ((Map<String, Object>) current).get(key);
-                if (current instanceof List) {
-                    List list = (List) current;
-                    current = index < list.size() ? list.get(index) : null;
-                }
-            } else {
-                current = ((Map<String, Object>) current).get(part);
-            }
-        }
-
-        return current;
-    }
-
-    public void setValue(Map<String, Object> data, String path, Object value) {
-        String[] parts = path.split("\\.");
-        Map<String, Object> current = data;
-
-        for (int i = 0; i < parts.length - 1; i++) {
-            String part = parts[i];
-
-            if (part.contains("[")) {
-                int bracketIdx = part.indexOf('[');
-                String key = part.substring(0, bracketIdx);
-                int index = Integer.parseInt(part.substring(bracketIdx + 1, part.length() - 1));
-
-                current.putIfAbsent(key, new ArrayList<>());
-                List list = (List) current.get(key);
-
-                while (list.size() <= index) {
-                    list.add(new LinkedHashMap<String, Object>());
-                }
-
-                current = (Map<String, Object>) list.get(index);
-            } else {
-                current.putIfAbsent(part, new LinkedHashMap<String, Object>());
-                current = (Map<String, Object>) current.get(part);
-            }
-        }
-
-        String lastPart = parts[parts.length - 1];
-        if (lastPart.contains("[")) {
-            int bracketIdx = lastPart.indexOf('[');
-            String key = lastPart.substring(0, bracketIdx);
-            int index = Integer.parseInt(lastPart.substring(bracketIdx + 1, lastPart.length() - 1));
-
-            current.putIfAbsent(key, new ArrayList<>());
-            List list = (List) current.get(key);
-            while (list.size() <= index) {
-                list.add(null);
-            }
-            list.set(index, value);
-        } else {
-            current.put(lastPart, value);
-        }
-    }
-}
-
-/**
- * Custom JEXL functions for transformations
- */
-class TransformFunctions {
-    public String uppercase(String value) {
-        return value != null ? value.toUpperCase() : null;
-    }
-
-    public String lowercase(String value) {
-        return value != null ? value.toLowerCase() : null;
-    }
-
-    public String substring(String value, int start, int end) {
-        return value != null ? value.substring(start, end) : null;
-    }
-
-    public String concat(String... values) {
-        return String.join("", values);
-    }
-
-    public String formatDate(String date, String format) {
-        // Implement date formatting using SimpleDateFormat or DateTimeFormatter
-        return date;
-    }
-
-    public String trim(String value) {
-        return value != null ? value.trim() : null;
-    }
-
-    public String replace(String value, String target, String replacement) {
-        return value != null ? value.replace(target, replacement) : null;
-    }
-}
-
-/**
- * Validation engine
- */
-class ValidationEngine {
-    public void validate(Object value, String validator, String fieldId) {
-        if (validator.equals("notEmpty()")) {
-            if (value == null || value.toString().isEmpty()) {
-                throw new ValidationException("Field " + fieldId + " cannot be empty");
-            }
-        } else if (validator.startsWith("regex(")) {
-            String pattern = validator.substring(7, validator.length() - 2);
-            if (value != null && !value.toString().matches(pattern)) {
-                throw new ValidationException("Field " + fieldId + " does not match pattern: " + pattern);
-            }
-        }
-    }
-}
-
-/**
- * Custom exceptions
- */
-class TransformationException extends RuntimeException {
-    public TransformationException(String message) {
-        super(message);
-    }
-    public TransformationException(String message, Throwable cause) {
-        super(message, cause);
-    }
-}
-
-class ValidationException extends RuntimeException {
-    public ValidationException(String message) {
-        super(message);
+        // No longer needed - context available directly in expressions
+        return expression;
     }
 }

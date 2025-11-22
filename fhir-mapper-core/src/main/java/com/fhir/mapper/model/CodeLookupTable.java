@@ -70,4 +70,18 @@ public class CodeLookupTable {
         }
         return defaultSourceCode;
     }
+    
+    @Override
+    public String toString() {
+        return "CodeLookupTable{" +
+            "id='" + id + '\'' +
+            ", name='" + name + '\'' +
+            ", sourceSystem='" + sourceSystem + '\'' +
+            ", targetSystem='" + targetSystem + '\'' +
+            ", bidirectional=" + bidirectional +
+            ", defaultSourceCode='" + defaultSourceCode + '\'' +
+            ", defaultTargetCode='" + defaultTargetCode + '\'' +
+            ", mappingsCount=" + (mappings != null ? mappings.size() : 0) +
+            '}';
+    }
 }
