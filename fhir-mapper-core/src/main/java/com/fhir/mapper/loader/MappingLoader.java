@@ -1,15 +1,27 @@
 package com.fhir.mapper.loader;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fhir.mapper.model.*;
-import com.fhir.mapper.validation.*;
-import ca.uhn.fhir.context.FhirContext;
-
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.*;
-import java.util.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fhir.mapper.model.CodeLookupTable;
+import com.fhir.mapper.model.MappingRegistry;
+import com.fhir.mapper.model.ResourceMapping;
+import com.fhir.mapper.security.MappingSecurityValidator;
+import com.fhir.mapper.security.SecurityValidationResult;
+import com.fhir.mapper.validation.MappingValidator;
+import com.fhir.mapper.validation.ValidationError;
+import com.fhir.mapper.validation.ValidationResult;
+
+import ca.uhn.fhir.context.FhirContext;
 
 /**
  * Loads mappings and lookup tables from JSON files with validation
@@ -84,6 +96,21 @@ public class MappingLoader {
             for (ValidationError error : result.getErrors()) {
                 System.err.println("  [ERROR] " + error.getContext() + ": " + error.getMessage());
             }
+        }
+        
+        // SECURITY VALIDATION - Always run regardless of strict mode
+        System.out.println("Running security validation...");
+        MappingSecurityValidator securityValidator = 
+            new MappingSecurityValidator();
+        SecurityValidationResult securityResult = 
+            securityValidator.validateRegistry(registry);
+        
+        if (securityResult.hasIssues()) {
+            securityResult.printReport();
+            // Always fail on CRITICAL security issues
+            securityResult.throwIfCritical();
+        } else {
+            System.out.println("✓ Security validation passed - no issues found");
         }
         
         System.out.println("Mapping registry loaded successfully");

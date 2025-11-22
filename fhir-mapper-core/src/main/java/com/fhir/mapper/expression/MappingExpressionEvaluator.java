@@ -1,13 +1,20 @@
 package com.fhir.mapper.expression;
 
-import com.fhir.mapper.model.TransformationContext;
-import org.apache.commons.jexl3.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.apache.commons.jexl3.JexlBuilder;
+import org.apache.commons.jexl3.JexlContext;
+import org.apache.commons.jexl3.JexlEngine;
+import org.apache.commons.jexl3.JexlException;
+import org.apache.commons.jexl3.JexlExpression;
+import org.apache.commons.jexl3.MapContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import com.fhir.mapper.model.TransformationContext;
 
 /**
  * Expression evaluator for FHIR mapping transformations.
@@ -42,17 +49,22 @@ public class MappingExpressionEvaluator {
         Map<String, Object> namespaces = new HashMap<>();
         namespaces.put("fn", new TransformFunctions());
         
-        // CRITICAL: Use UNRESTRICTED permissions to allow all method calls
-        // This is what makes fn.method() work!
+        // Use RESTRICTED permissions with allowed packages
+        // This is safer than UNRESTRICTED while still being functional        
+        String[] allowedPackages = {
+                "com.fhir.mapper.expression.*"
+        };
+        
+        
         org.apache.commons.jexl3.introspection.JexlPermissions permissions = 
-            org.apache.commons.jexl3.introspection.JexlPermissions.UNRESTRICTED;
+            org.apache.commons.jexl3.introspection.JexlPermissions.RESTRICTED.compose(allowedPackages);
         
         return new JexlBuilder()
                 .cache(512)
                 .strict(false)
                 .silent(false)
                 .safe(false)
-                .permissions(permissions)  // THIS IS THE KEY!
+                .permissions(permissions)
                 .namespaces(namespaces)
                 .create();
     }
