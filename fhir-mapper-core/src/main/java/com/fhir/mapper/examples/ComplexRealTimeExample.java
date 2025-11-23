@@ -32,10 +32,10 @@ public class ComplexRealTimeExample {
 		System.out.println("Output Validation Success: " + expectedOutput().equals(fhirJson));;
 		
 		// Verify results
-//		System.out.println("Patient ID: " + patient.getIdentifierFirstRep().getValue());
-//		System.out.println("Name: " + patient.getNameFirstRep().getNameAsSingleString());
-//		System.out.println("Gender: " + patient.getGender());
-//		System.out.println("Extensions: " + patient.getExtension().size());
+		System.out.println("Patient ID: " + patient.getIdentifierFirstRep().getValue());
+		System.out.println("Name: " + patient.getNameFirstRep().getNameAsSingleString());
+		System.out.println("Gender: " + patient.getGender());
+		System.out.println("Extensions: " + patient.getExtension().size());
 	}
 	
 	public static String inputJSON() {
