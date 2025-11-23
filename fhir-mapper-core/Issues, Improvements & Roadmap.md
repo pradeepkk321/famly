@@ -1,7 +1,7 @@
 # FHIR Mapper Core - Issues, Improvements & Roadmap
 
 **Version**: 1.0.0-SNAPSHOT  
-**Last Updated**: November 2024  
+**Last Updated**: November 2025  
 **Status**: Production-Ready with Recommended Improvements
 
 ---
@@ -807,7 +807,7 @@ graph LR
     style A4 fill:#ff9
     style A5 fill:#9f9
 ```
-
+```
 **Features:**
 - Color-code by operation type (lookup, transform, default)
 - Show conditions and validators
@@ -1884,7 +1884,7 @@ How you worked around it
 
 ## License
 
-[Your License Here - Apache 2.0 / MIT / etc.]
+http://www.apache.org/licenses/LICENSE-2.0
 
 ---
 
@@ -1898,6 +1898,5 @@ How you worked around it
 ---
 
 **Document Version**: 1.0  
-**Last Updated**: November 2024  
-**Maintainers**: [Your Team]  
-**Next Review**: January 2025
+**Last Updated**: November 2025  
+**Maintainers**: Pradeep Kumara Krishnegowda
