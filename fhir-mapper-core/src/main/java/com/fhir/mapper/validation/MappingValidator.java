@@ -1,28 +1,20 @@
 package com.fhir.mapper.validation;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.commons.jexl3.JexlBuilder;
 import org.apache.commons.jexl3.JexlEngine;
 import org.apache.commons.jexl3.JexlException;
 import org.apache.commons.jexl3.JexlExpression;
 
-import com.fhir.mapper.model.CodeLookupTable;
-import com.fhir.mapper.model.CodeMapping;
-import com.fhir.mapper.model.FieldMapping;
-import com.fhir.mapper.model.MappingDirection;
-import com.fhir.mapper.model.MappingRegistry;
-import com.fhir.mapper.model.ResourceMapping;
+import com.fhir.mapper.model.*;
 
 import ca.uhn.fhir.context.FhirContext;
 
 /**
- * Validates mapping configurations during loading using HAPI FHIR
+ * Enhanced validator with uniqueness checks for IDs and names
  */
 public class MappingValidator {
     private final JexlEngine jexlEngine;
@@ -40,12 +32,17 @@ public class MappingValidator {
     }
 
     /**
-     * Validate entire mapping registry
+     * Validate entire mapping registry with uniqueness checks
      */
     public ValidationResult validateRegistry(MappingRegistry registry) {
         ValidationResult result = new ValidationResult();
         
+        // Validate uniqueness across all mappings
+        validateUniqueIds(registry, result);
+        validateUniqueNames(registry, result);
+        
         // Validate lookup tables
+        validateLookupTableUniqueness(registry, result);
         for (CodeLookupTable lookup : registry.getLookupTables().values()) {
             validateLookupTable(lookup, result);
         }
@@ -57,17 +54,94 @@ public class MappingValidator {
         
         return result;
     }
+    
+    /**
+     * Validate that all mapping IDs are unique
+     */
+    private void validateUniqueIds(MappingRegistry registry, ValidationResult result) {
+        Map<String, List<ResourceMapping>> idGroups = registry.getResourceMappings().stream()
+            .filter(m -> m.getId() != null)
+            .collect(Collectors.groupingBy(ResourceMapping::getId));
+        
+        idGroups.forEach((id, mappings) -> {
+            if (mappings.size() > 1) {
+                String context = "Registry Validation";
+                result.addError(context, 
+                    String.format("Duplicate mapping ID '%s' found in %d mappings: %s",
+                        id,
+                        mappings.size(),
+                        mappings.stream()
+                            .map(m -> m.getName() != null ? m.getName() : "unnamed")
+                            .collect(Collectors.joining(", "))
+                    )
+                );
+            }
+        });
+    }
+    
+    /**
+     * Validate that all mapping names are unique (WARNING only)
+     */
+    private void validateUniqueNames(MappingRegistry registry, ValidationResult result) {
+        Map<String, List<ResourceMapping>> nameGroups = registry.getResourceMappings().stream()
+            .filter(m -> m.getName() != null && !m.getName().isEmpty())
+            .collect(Collectors.groupingBy(ResourceMapping::getName));
+        
+        nameGroups.forEach((name, mappings) -> {
+            if (mappings.size() > 1) {
+                String context = "Registry Validation";
+                result.addWarning(context, 
+                    String.format("Duplicate mapping name '%s' found in %d mappings: %s. " +
+                        "Consider using unique names for better clarity.",
+                        name,
+                        mappings.size(),
+                        mappings.stream()
+                            .map(ResourceMapping::getId)
+                            .collect(Collectors.joining(", "))
+                    )
+                );
+            }
+        });
+    }
+    
+    /**
+     * Validate that all lookup table IDs are unique
+     */
+    private void validateLookupTableUniqueness(MappingRegistry registry, ValidationResult result) {
+        Map<String, CodeLookupTable> lookups = registry.getLookupTables();
+        Set<String> names = new HashSet<>();
+        
+        for (CodeLookupTable lookup : lookups.values()) {
+            if (lookup.getName() != null && !lookup.getName().isEmpty()) {
+                if (!names.add(lookup.getName())) {
+                    result.addError("Lookup Table Validation",
+                        "Duplicate lookup table name: " + lookup.getName());
+                }
+            }
+        }
+    }
 
     /**
-     * Validate resource mapping
+     * Validate resource mapping with enhanced checks
      */
     public void validateResourceMapping(ResourceMapping mapping, MappingRegistry registry, 
                                         ValidationResult result) {
-        String context = "Mapping: " + mapping.getId();
+        String context = "Mapping: " + (mapping.getId() != null ? mapping.getId() : "unknown");
         
         // Basic validations
         if (mapping.getId() == null || mapping.getId().isEmpty()) {
             result.addError(context, "Mapping ID is required");
+        } else {
+            // Validate ID format (alphanumeric, hyphens, underscores only)
+            if (!mapping.getId().matches("^[a-zA-Z0-9_-]+$")) {
+                result.addError(context, 
+                    "Mapping ID must contain only alphanumeric characters, hyphens, and underscores: " + 
+                    mapping.getId());
+            }
+        }
+        
+        if (mapping.getName() == null || mapping.getName().isEmpty()) {
+            result.addWarning(context, "Mapping name is recommended");
         }
         
         if (mapping.getDirection() == null) {
@@ -82,6 +156,11 @@ public class MappingValidator {
             result.addError(context, "Target type is required");
         }
         
+        if (mapping.getFieldMappings() == null || mapping.getFieldMappings().isEmpty()) {
+            result.addError(context, "At least one field mapping is required");
+            return; // Can't validate field mappings if none exist
+        }
+        
         // Validate FHIR resource type
         if (mapping.getDirection() == MappingDirection.JSON_TO_FHIR) {
             if (!fhirPathValidator.isValidResourceType(mapping.getTargetType())) {
@@ -93,16 +172,53 @@ public class MappingValidator {
             }
         }
         
-        // Validate field mappings
-        Set<String> fieldIds = new HashSet<>();
+        // Validate field mapping uniqueness and integrity
+        validateFieldMappingUniqueness(mapping, result);
+        
+        // Validate each field mapping
         for (FieldMapping field : mapping.getFieldMappings()) {
-            // Check duplicate IDs
-            if (!fieldIds.add(field.getId())) {
-                result.addError(context, "Duplicate field mapping ID: " + field.getId());
-            }
-            
             validateFieldMapping(field, mapping, registry, result);
         }
+    }
+    
+    /**
+     * Validate field mapping ID uniqueness within a resource mapping
+     */
+    private void validateFieldMappingUniqueness(ResourceMapping mapping, ValidationResult result) {
+        String context = "Mapping: " + mapping.getId();
+        
+        Map<String, List<FieldMapping>> idGroups = mapping.getFieldMappings().stream()
+            .filter(f -> f.getId() != null)
+            .collect(Collectors.groupingBy(FieldMapping::getId));
+        
+        idGroups.forEach((id, fields) -> {
+            if (fields.size() > 1) {
+                result.addError(context, 
+                    String.format("Duplicate field mapping ID '%s' found %d times", id, fields.size())
+                );
+            }
+        });
+        
+        // Check for duplicate target paths (potential conflict)
+        Map<String, List<FieldMapping>> targetPathGroups = mapping.getFieldMappings().stream()
+            .filter(f -> f.getTargetPath() != null)
+            .collect(Collectors.groupingBy(FieldMapping::getTargetPath));
+        
+        targetPathGroups.forEach((path, fields) -> {
+            if (fields.size() > 1) {
+                // Only warn if they don't have mutually exclusive conditions
+                boolean hasConditions = fields.stream().allMatch(f -> f.getCondition() != null);
+                if (!hasConditions) {
+                    result.addWarning(context,
+                        String.format("Multiple field mappings target the same path '%s' without conditions. " +
+                            "This may cause conflicts. Field IDs: %s",
+                            path,
+                            fields.stream().map(FieldMapping::getId).collect(Collectors.joining(", "))
+                        )
+                    );
+                }
+            }
+        });
     }
 
     /**
@@ -110,11 +226,19 @@ public class MappingValidator {
      */
     private void validateFieldMapping(FieldMapping field, ResourceMapping parent, 
                                       MappingRegistry registry, ValidationResult result) {
-        String context = "Mapping: " + parent.getId() + ", Field: " + field.getId();
+        String context = "Mapping: " + parent.getId() + ", Field: " + 
+            (field.getId() != null ? field.getId() : "unknown");
         
         // ID validation
         if (field.getId() == null || field.getId().isEmpty()) {
             result.addError(context, "Field ID is required");
+        } else {
+            // Validate ID format
+            if (!field.getId().matches("^[a-zA-Z0-9_-]+$")) {
+                result.addError(context, 
+                    "Field ID must contain only alphanumeric characters, hyphens, and underscores: " + 
+                    field.getId());
+            }
         }
         
         // Target path is always required
@@ -126,6 +250,8 @@ public class MappingValidator {
         if (field.getSourcePath() == null && field.getDefaultValue() == null) {
             if (field.isRequired()) {
                 result.addError(context, "Required field must have either sourcePath or defaultValue");
+            } else {
+                result.addWarning(context, "Field has neither sourcePath nor defaultValue");
             }
         }
         
@@ -143,17 +269,20 @@ public class MappingValidator {
             field.getTargetPath() : field.getSourcePath();
             
         if (fhirPath != null) {
-            ValidationResult pathResult = fhirPathValidator.validatePath(resourceType, fhirPath);
+            ValidationResult pathResult = fhirPathValidator.validatePathExists(resourceType, fhirPath);
             if (!pathResult.isValid()) {
                 result.addError(context, "Invalid FHIR path '" + fhirPath + "': " + 
-                    pathResult.getErrors());
+                    pathResult.getErrors().stream()
+                        .map(ValidationError::getMessage)
+                        .collect(Collectors.joining(", "))
+                );
             }
             
             // Validate dataType matches FHIR path expected type
             if (field.getDataType() != null) {
                 String expectedType = fhirPathValidator.getExpectedType(resourceType, fhirPath);
                 if (expectedType != null && !isCompatibleType(field.getDataType(), expectedType)) {
-                    result.addError(context, "DataType mismatch: field specifies '" + 
+                    result.addWarning(context, "DataType mismatch: field specifies '" + 
                         field.getDataType() + "' but FHIR path expects '" + expectedType + "'");
                 }
             }
@@ -209,24 +338,26 @@ public class MappingValidator {
      * Prepare expression for validation by replacing context variables
      */
     private String prepareExpressionForValidation(String expression) {
-        if (expression == null || !expression.contains("$ctx.")) {
+        if (expression == null) {
             return expression;
         }
         
         String prepared = expression;
         
-        // Replace context variable references with test values
-        prepared = prepared.replaceAll("\\$ctx\\.organizationId", "'test-org-id'");
-        prepared = prepared.replaceAll("\\$ctx\\.facilityId", "'test-facility-id'");
-        prepared = prepared.replaceAll("\\$ctx\\.tenantId", "'test-tenant-id'");
-        prepared = prepared.replaceAll("\\$ctx\\.identifierSystem", "'test-system'");
+        // Replace old-style context variable references
+        if (prepared.contains("$ctx.")) {
+            prepared = prepared.replaceAll("\\$ctx\\.organizationId", "'test-org-id'");
+            prepared = prepared.replaceAll("\\$ctx\\.facilityId", "'test-facility-id'");
+            prepared = prepared.replaceAll("\\$ctx\\.tenantId", "'test-tenant-id'");
+            prepared = prepared.replaceAll("\\$ctx\\.identifierSystem", "'test-system'");
+            prepared = prepared.replaceAll("\\$ctx\\.settings\\['([^']+)'\\]", "'test-value'");
+            prepared = prepared.replaceAll("\\$ctx\\.settings\\[\"([^\"]+)\"\\]", "'test-value'");
+            prepared = prepared.replaceAll("\\$ctx\\.\\w+", "'test-value'");
+        }
         
-        // Handle settings map access: $ctx.settings['key']
-        prepared = prepared.replaceAll("\\$ctx\\.settings\\['([^']+)'\\]", "'test-value'");
-        prepared = prepared.replaceAll("\\$ctx\\.settings\\[\"([^\"]+)\"\\]", "'test-value'");
-        
-        // Handle generic context variables
-        prepared = prepared.replaceAll("\\$ctx\\.\\w+", "'test-value'");
+        // Replace new-style context access (ctx.property)
+        // This is trickier because we need to preserve the JEXL structure
+        // For validation purposes, we just ensure the expression parses
         
         return prepared;
     }
@@ -264,14 +395,26 @@ public class MappingValidator {
      * Validate lookup table
      */
     private void validateLookupTable(CodeLookupTable lookup, ValidationResult result) {
-        String context = "Lookup: " + lookup.getId();
+        String context = "Lookup: " + (lookup.getId() != null ? lookup.getId() : "unknown");
         
         if (lookup.getId() == null || lookup.getId().isEmpty()) {
             result.addError(context, "Lookup ID is required");
+        } else {
+            // Validate ID format
+            if (!lookup.getId().matches("^[a-zA-Z0-9_-]+$")) {
+                result.addError(context, 
+                    "Lookup ID must contain only alphanumeric characters, hyphens, and underscores: " + 
+                    lookup.getId());
+            }
+        }
+        
+        if (lookup.getName() == null || lookup.getName().isEmpty()) {
+            result.addWarning(context, "Lookup name is recommended");
         }
         
         if (lookup.getMappings() == null || lookup.getMappings().isEmpty()) {
             result.addError(context, "Lookup must have at least one mapping");
+            return;
         }
         
         // Check for duplicate source codes
@@ -279,14 +422,15 @@ public class MappingValidator {
         for (CodeMapping mapping : lookup.getMappings()) {
             if (mapping.getSourceCode() == null || mapping.getSourceCode().isEmpty()) {
                 result.addError(context, "Source code cannot be null or empty");
+            } else {
+                if (!sourceCodes.add(mapping.getSourceCode())) {
+                    result.addError(context, "Duplicate source code: " + mapping.getSourceCode());
+                }
             }
             
             if (mapping.getTargetCode() == null || mapping.getTargetCode().isEmpty()) {
-                result.addError(context, "Target code cannot be null or empty");
-            }
-            
-            if (!sourceCodes.add(mapping.getSourceCode())) {
-                result.addError(context, "Duplicate source code: " + mapping.getSourceCode());
+                result.addError(context, "Target code cannot be null or empty for source: " + 
+                    mapping.getSourceCode());
             }
         }
         
@@ -294,7 +438,7 @@ public class MappingValidator {
         if (lookup.isBidirectional()) {
             Set<String> targetCodes = new HashSet<>();
             for (CodeMapping mapping : lookup.getMappings()) {
-                if (!targetCodes.add(mapping.getTargetCode())) {
+                if (mapping.getTargetCode() != null && !targetCodes.add(mapping.getTargetCode())) {
                     result.addError(context, "Bidirectional lookup has duplicate target code: " + 
                         mapping.getTargetCode());
                 }
@@ -346,7 +490,7 @@ public class MappingValidator {
         return new HashSet<>(Arrays.asList(
             "string", "integer", "decimal", "boolean", "date", "dateTime", "time",
             "instant", "code", "uri", "url", "canonical", "oid", "uuid", "id",
-            "markdown", "base64Binary", "unsignedInt", "positiveInt"
+            "markdown", "base64Binary", "unsignedInt", "positiveInt", "array"
         ));
     }
 }

@@ -117,7 +117,7 @@ No JUnit tests found in the provided codebase. Only example files exist.
 @Test void testLargeArrayHandling()
 
 // Expression tests
-@Test void testBasicTransformExpression()
+@Test void testBasicTransformExpression(me)
 @Test void testContextVariableAccess()
 @Test void testConditionalMapping()
 @Test void testInvalidExpression()
@@ -794,7 +794,7 @@ String dotDiagram = visualizer.toGraphviz(mapping);
 ```
 
 **Output Example (Mermaid):**
-```mermaid
+``` mermaid
 graph LR
     A[PatientDTO] --> B[Patient]
     
@@ -803,17 +803,17 @@ graph LR
     A3[lastName] --> B3[name.family]
     A4[gender] -->|lookup| B4[gender]
     A5[ssn] -->|transform| B5[identifier.value]
-    
+  
     style A4 fill:#ff9
     style A5 fill:#9f9
 ```
 ```
+
 **Features:**
 - Color-code by operation type (lookup, transform, default)
 - Show conditions and validators
 - Export to PNG/SVG
 - Interactive HTML with tooltips
-
 ---
 
 ## Future Enhancements

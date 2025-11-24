@@ -14,6 +14,10 @@ public class ComplexRealTimeExample {
 		// Load mappings
 		MappingLoader loader = new MappingLoader("./mappings");
 		MappingRegistry registry = loader.loadAll();
+		testPatientTransformation(registry);
+	}
+
+	private static void testPatientTransformation(MappingRegistry registry) throws Exception {
 		TransformationEngine engine = new TransformationEngine(registry);
 
 		// Setup context
