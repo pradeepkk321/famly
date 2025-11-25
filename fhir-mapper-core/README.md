@@ -8,11 +8,12 @@ A declarative, JSON-driven transformation framework for converting between custo
 
 ## Overview
 
-FHIR Mapper Core eliminates the need to write Java transformation code for each FHIR resource mapping. Instead, you define mappings in JSON configuration files with support for:
+FHIR Mapper Core eliminates the need to write Java transformation code for each FHIR resource mapping. Instead, you define mappings in JSON or Excel configuration files with support for:
 
 - **Bidirectional transformations** (JSON ↔ FHIR)
+- **Excel-based configuration** for business users (mappings and lookup tables)
 - **Expression-based transformations** using JEXL
-- **Code lookups** for terminology mapping
+- **Code lookups** for terminology mapping with multi-system support
 - **Conditional field mapping** with context variables
 - **Validation** against HAPI FHIR structure definitions
 - **Security scanning** to prevent malicious expressions
@@ -54,6 +55,52 @@ ResourceMapping mapping = registry.findBySourceAndDirection(
 String jsonInput = "{\"patientId\":\"P123\",\"firstName\":\"John\",\"lastName\":\"Doe\",\"gender\":\"M\"}";
 Patient patient = engine.jsonToFhirResource(jsonInput, mapping, context, Patient.class);
 ```
+
+## Excel Support
+
+Business users can manage mappings and lookup tables using Excel without writing JSON:
+
+### Mapping Workbooks
+- One workbook = Multiple resource mappings
+- Each sheet = One mapping (e.g., "Patient - JSON to FHIR")
+- Auto-converts to JSON on load
+- Changes in Excel automatically sync
+
+### Lookup Workbooks
+- One workbook = Multiple lookup tables
+- Each sheet = One lookup table
+- Supports per-mapping target systems
+- Easier to maintain than individual JSON files
+
+**Directory Structure:**
+```
+mappings/
+├── lookups/              # JSON lookups (legacy)
+├── lookups-excel/        # Excel lookup workbooks
+│   └── all-lookups.xlsx  # Multiple sheets, one per lookup
+├── json/                 # Manual JSON mappings
+├── excel/                # Excel mapping workbooks
+│   └── all-mappings.xlsx # Multiple sheets, one per mapping
+└── excel-generated/      # Auto-generated (cleaned on load)
+```
+
+**Excel Lookup Format:**
+```
+Sheet: "gender-lookup"
+
+Row 1: ID:                     | gender-lookup
+Row 2: Name:                   | Gender Code Mapping
+Row 3: Source System:          | internal
+Row 4: Default Target System:  | http://hl7.org/fhir/administrative-gender
+Row 5: Bidirectional:          | false
+Row 6: (blank)
+Row 7: sourceCode | targetCode | targetSystem                              | display
+Row 8: M          | male       |                                           | Male
+Row 9: F          | female     |                                           | Female
+Row 10: O         | other      | http://custom.org/special-gender-system   | Other
+```
+
+Note: `targetSystem` in row 8+ is optional. If blank, uses `Default Target System` from row 4.
 
 ## Features
 
@@ -301,11 +348,43 @@ your-project/
 | `id` | string | Yes | Unique lookup identifier |
 | `name` | string | No | Human-readable name |
 | `sourceSystem` | string | No | Source coding system |
-| `targetSystem` | string | No | Target coding system |
+| `defaultTargetSystem` | string | No | Default target system (used when mapping doesn't specify) |
 | `bidirectional` | boolean | No | Allow reverse lookups (default: false) |
 | `defaultSourceCode` | string | No | Fallback for reverse lookup |
 | `defaultTargetCode` | string | No | Fallback for forward lookup |
 | `mappings` | array | Yes | Array of code mappings |
+
+### CodeMapping (per-row in lookup table)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `sourceCode` | string | Yes | Source code value |
+| `targetCode` | string | Yes | Target code value |
+| `targetSystem` | string | No | **Per-mapping target system** (overrides defaultTargetSystem) |
+| `display` | string | No | Human-readable display text |
+
+**Multi-System Example:**
+```json
+{
+  "id": "diagnosis-lookup",
+  "sourceSystem": "internal",
+  "defaultTargetSystem": "http://snomed.info/sct",
+  "mappings": [
+    {
+      "sourceCode": "DIAB",
+      "targetCode": "73211009",
+      "targetSystem": null,
+      "display": "Diabetes mellitus"
+    },
+    {
+      "sourceCode": "CVD",
+      "targetCode": "I10",
+      "targetSystem": "http://hl7.org/fhir/sid/icd-10",
+      "display": "Hypertension"
+    }
+  ]
+}
+```
 
 ## Advanced Usage
 
