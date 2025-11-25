@@ -650,17 +650,17 @@ Contributions are welcome! Please:
 
 ## License
 
-[Your License Here]
+[Apache-2.0 license](http://www.apache.org/licenses/LICENSE-2.0)
 
 ## Support
 
 For issues and questions:
 - GitHub Issues: [link]
 - Documentation: [link]
-- Email: [email]
+- Email: pradyskumar@gmail.com
 
 ---
 
 **Version**: 1.0.0-SNAPSHOT  
 **FHIR Version**: R4 (R5 support available)  
-**Last Updated**: 22 Nov 2025
+**Last Updated**: 25 Nov 2025
