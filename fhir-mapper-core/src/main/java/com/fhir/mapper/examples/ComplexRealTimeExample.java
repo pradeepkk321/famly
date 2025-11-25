@@ -26,20 +26,23 @@ public class ComplexRealTimeExample {
 		context.getSettings().put("mrnSystem", "urn:oid:2.16.840.1.113883.4.1");
 
 		// Get mapping
-		ResourceMapping mapping = registry.findBySourceAndDirection("ComplexPatientDTO", MappingDirection.JSON_TO_FHIR);
+//		ResourceMapping mapping = registry.findBySourceAndDirection("ComplexPatientDTO", MappingDirection.JSON_TO_FHIR);
+		ResourceMapping mapping = registry.findById("complex-patient-v1");
+		
 		// Transform
 		String inputJson = inputJSON(); // Your complex JSON above
-		Patient patient = engine.jsonToFhirResource(inputJson, mapping, context, Patient.class);
 		String fhirJson = engine.jsonToFhirJson(inputJson, mapping, context);
-		System.out.println("\n\n Patient JSON: \n " + engine.jsonToFhirJson(inputJson, mapping, context));
+		System.out.println("\n\n Patient JSON: \n " + fhirJson);
 		
 		System.out.println("Output Validation Success: " + expectedOutput().equals(fhirJson));;
 		
-		// Verify results
-		System.out.println("Patient ID: " + patient.getIdentifierFirstRep().getValue());
-		System.out.println("Name: " + patient.getNameFirstRep().getNameAsSingleString());
-		System.out.println("Gender: " + patient.getGender());
-		System.out.println("Extensions: " + patient.getExtension().size());
+
+//		Patient patient = engine.jsonToFhirResource(inputJson, mapping, context, Patient.class);
+//		// Verify results
+//		System.out.println("Patient ID: " + patient.getIdentifierFirstRep().getValue());
+//		System.out.println("Name: " + patient.getNameFirstRep().getNameAsSingleString());
+//		System.out.println("Gender: " + patient.getGender());
+//		System.out.println("Extensions: " + patient.getExtension().size());
 	}
 	
 	public static String inputJSON() {

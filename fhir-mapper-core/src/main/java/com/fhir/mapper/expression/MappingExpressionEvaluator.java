@@ -82,10 +82,10 @@ public class MappingExpressionEvaluator {
             throw new ExpressionEvaluationException("Expression cannot be null or empty");
         }
         
-        System.out.println("=== MappingExpressionEvaluator.evaluate ===");
-        System.out.println("Expression: " + expression);
-        System.out.println("Value: " + value);
-        System.out.println("Value type: " + (value != null ? value.getClass().getName() : "null"));
+//        System.out.println("=== MappingExpressionEvaluator.evaluate ===");
+//        System.out.println("Expression: " + expression);
+//        System.out.println("Value: " + value);
+//        System.out.println("Value type: " + (value != null ? value.getClass().getName() : "null"));
         
         try {
             JexlContext jexlContext = createJexlContext(value, sourceData, context);
@@ -98,8 +98,8 @@ public class MappingExpressionEvaluator {
             JexlExpression jexlExpr = getOrCompileExpression(expression);
             Object result = jexlExpr.evaluate(jexlContext);
             
-            System.out.println("Result: " + result);
-            System.out.println("Result type: " + (result != null ? result.getClass().getName() : "null"));
+//            System.out.println("Result: " + result);
+//            System.out.println("Result type: " + (result != null ? result.getClass().getName() : "null"));
             
             logger.debug("Evaluated expression '{}' = {}", expression, result);
             
@@ -124,13 +124,13 @@ public class MappingExpressionEvaluator {
                                     TransformationContext context) 
             throws ExpressionEvaluationException {
         
-        System.out.println("=== Evaluating CONDITION ===");
-        System.out.println("Expression: " + expression);
-        System.out.println("Context organizationId: " + (context != null ? context.getOrganizationId() : "null"));
+//        System.out.println("=== Evaluating CONDITION ===");
+//        System.out.println("Expression: " + expression);
+//        System.out.println("Context organizationId: " + (context != null ? context.getOrganizationId() : "null"));
         
         Object result = evaluate(expression, null, sourceData, context);
         
-        System.out.println("Condition result: " + result);
+//        System.out.println("Condition result: " + result);
         
         if (result == null) {
             return false;
@@ -190,8 +190,8 @@ public class MappingExpressionEvaluator {
                                          TransformationContext context) {
         MapContext jexlContext = new MapContext();
         
-        System.out.println("Creating JEXL Context:");
-        System.out.println("  sourceData: " + sourceData);
+//        System.out.println("Creating JEXL Context:");
+//        System.out.println("  sourceData: " + sourceData);
         
         // Add all source data variables
         if (sourceData != null) {
@@ -203,35 +203,35 @@ public class MappingExpressionEvaluator {
         
         // Add the current value being transformed
         jexlContext.set("value", value);
-        System.out.println("  Set context['value'] = " + value);
+//        System.out.println("  Set context['value'] = " + value);
         
         // Add transformation context
         if (context != null) {
             jexlContext.set("ctx", context);
-            System.out.println("  Set context['ctx'] = " + context);
+//            System.out.println("  Set context['ctx'] = " + context);
             
             // Add context variables directly for easier access
             if (context.getOrganizationId() != null) {
                 jexlContext.set("organizationId", context.getOrganizationId());
-                System.out.println("  Set context['organizationId'] = " + context.getOrganizationId());
+//                System.out.println("  Set context['organizationId'] = " + context.getOrganizationId());
             } else {
-                System.out.println("  context.getOrganizationId() is NULL!");
+//                System.out.println("  context.getOrganizationId() is NULL!");
             }
             
             if (context.getFacilityId() != null) {
                 jexlContext.set("facilityId", context.getFacilityId());
-                System.out.println("  Set context['facilityId'] = " + context.getFacilityId());
+//                System.out.println("  Set context['facilityId'] = " + context.getFacilityId());
             }
             
             if (context.getTenantId() != null) {
                 jexlContext.set("tenantId", context.getTenantId());
-                System.out.println("  Set context['tenantId'] = " + context.getTenantId());
+//                System.out.println("  Set context['tenantId'] = " + context.getTenantId());
             }
             
             // Add all custom variables
             if (context.getVariables() != null) {
                 context.getVariables().forEach(jexlContext::set);
-                System.out.println("  Added " + context.getVariables().size() + " custom variables");
+//                System.out.println("  Added " + context.getVariables().size() + " custom variables");
             }
         } else {
             System.out.println("  TransformationContext is NULL!");

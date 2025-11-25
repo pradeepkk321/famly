@@ -81,7 +81,7 @@ public class MappingLoader {
         registry.setFhirVersion(fhirContext.getVersion().getVersion().getFhirVersionString());
         
         System.out.println("╔════════════════════════════════════════════════════════════╗");
-        System.out.println("║  FHIR Mapper - Loading Mappings                           ║");
+        System.out.println("║  FHIR Mapper - Loading Mappings                            ║");
         System.out.println("╚════════════════════════════════════════════════════════════╝");
         System.out.println();
         System.out.println("Base path: " + basePath);
