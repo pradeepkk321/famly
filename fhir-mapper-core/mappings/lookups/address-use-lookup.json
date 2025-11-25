@@ -2,7 +2,7 @@
 	"id": "address-use-lookup",
 	"name": "Address Use Lookup",
 	"sourceSystem": "internal",
-	"targetSystem": "http://hl7.org/fhir/address-use",
+	"defaultTargetSystem": "http://hl7.org/fhir/address-use",
 	"bidirectional": false,
 	"mappings": [
 		{

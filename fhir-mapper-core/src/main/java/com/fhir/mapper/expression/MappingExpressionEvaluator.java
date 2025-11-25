@@ -185,63 +185,74 @@ public class MappingExpressionEvaluator {
     /**
      * Create a JEXL context with all necessary variables.
      */
-    private JexlContext createJexlContext(Object value,
-                                         Map<String, Object> sourceData,
-                                         TransformationContext context) {
-        MapContext jexlContext = new MapContext();
-        
+	private JexlContext createJexlContext(Object value, Map<String, Object> sourceData, TransformationContext context) {
+		MapContext jexlContext = new MapContext();
+
 //        System.out.println("Creating JEXL Context:");
 //        System.out.println("  sourceData: " + sourceData);
-        
-        // Add all source data variables
-        if (sourceData != null) {
-            sourceData.forEach((key, val) -> {
-                jexlContext.set(key, val);
+
+		// Add all source data variables
+		if (sourceData != null) {
+			sourceData.forEach((key, val) -> {
+				jexlContext.set(key, val);
 //                System.out.println("  Set context['" + key + "'] = " + val);
-            });
-        }
-        
-        // Add the current value being transformed
-        jexlContext.set("value", value);
+			});
+		}
+
+		// Add the current value being transformed
+		jexlContext.set("value", value);
 //        System.out.println("  Set context['value'] = " + value);
-        
-        // Add transformation context
-        if (context != null) {
-            jexlContext.set("ctx", context);
+
+		// Add transformation context 
+		if (context != null) {
+			
+			Map<String, Object> map = new HashMap<>();
+			jexlContext.set("$ctx", map);
 //            System.out.println("  Set context['ctx'] = " + context);
-            
-            // Add context variables directly for easier access
-            if (context.getOrganizationId() != null) {
-                jexlContext.set("organizationId", context.getOrganizationId());
-//                System.out.println("  Set context['organizationId'] = " + context.getOrganizationId());
-            } else {
-//                System.out.println("  context.getOrganizationId() is NULL!");
-            }
-            
-            if (context.getFacilityId() != null) {
-                jexlContext.set("facilityId", context.getFacilityId());
-//                System.out.println("  Set context['facilityId'] = " + context.getFacilityId());
-            }
-            
-            if (context.getTenantId() != null) {
-                jexlContext.set("tenantId", context.getTenantId());
-//                System.out.println("  Set context['tenantId'] = " + context.getTenantId());
-            }
-            
-            // Add all custom variables
-            if (context.getVariables() != null) {
-                context.getVariables().forEach(jexlContext::set);
-//                System.out.println("  Added " + context.getVariables().size() + " custom variables");
-            }
-        } else {
-            System.out.println("  TransformationContext is NULL!");
-        }
-        
-        // CRITICAL: Add fn as a regular variable for dot notation access
-        jexlContext.set("fn", new TransformFunctions());
-        
-        return jexlContext;
-    }
+
+			// Add context variables directly for easier access
+			if (context.getOrganizationId() != null) {
+//				jexlContext.set("organizationId", context.getOrganizationId());
+				map.put("organizationId", context.getOrganizationId());
+				// System.out.println(" Set context['organizationId'] = " +
+				// context.getOrganizationId());
+			} else {
+				// System.out.println(" context.getOrganizationId() is NULL!");
+			}
+
+			if (context.getFacilityId() != null) {
+//				jexlContext.set("facilityId", context.getFacilityId());
+				map.put("facilityId", context.getFacilityId());
+				// System.out.println(" Set context['facilityId'] = " +
+				// context.getFacilityId());
+			}
+
+			if (context.getTenantId() != null) {
+//				jexlContext.set("tenantId", context.getTenantId());
+				map.put("tenantId", context.getTenantId());
+				// System.out.println(" Set context['tenantId'] = "+ context.getTenantId());
+			}
+
+			// Add all custom variables
+			if (context.getVariables() != null) {
+				map.putAll(context.getVariables());
+//				context.getVariables().forEach(jexlContext::set);
+//			  System.out.println("  Added " + context.getVariables().size() + " custom variables"); 
+			}
+			
+			if(context.getSettings() != null) {
+				map.putAll(context.getSettings());
+			}
+
+		} else {
+			System.out.println("  TransformationContext is NULL!");
+		}
+
+		// CRITICAL: Add fn as a regular variable for dot notation access
+		jexlContext.set("fn", new TransformFunctions());
+
+		return jexlContext;
+	}
     
     /**
      * Clear the expression cache.

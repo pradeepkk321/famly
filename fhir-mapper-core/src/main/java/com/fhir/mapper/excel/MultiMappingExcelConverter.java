@@ -178,8 +178,8 @@ public class MultiMappingExcelConverter {
         
         while (rowIterator.hasNext()) {
             Row row = rowIterator.next();
-            String key = getCellValueAsString(row.getCell(0));
-            String value = getCellValueAsString(row.getCell(1));
+            String key = ExcelUtils.getCellValueAsString(row.getCell(0));
+            String value = ExcelUtils.getCellValueAsString(row.getCell(1));
             
             if (key != null && !key.isEmpty()) {
                 config.put(key.toLowerCase(), value);
@@ -206,9 +206,9 @@ public class MultiMappingExcelConverter {
         // Read ID from first meta row (takes precedence over generated ID)
         String id = null;
         if (metaRow0 != null) {
-            String label = getCellValueAsString(metaRow0.getCell(0));
+            String label = ExcelUtils.getCellValueAsString(metaRow0.getCell(0));
             if ("ID:".equalsIgnoreCase(label) || "id:".equalsIgnoreCase(label)) {
-                id = getCellValueAsString(metaRow0.getCell(1));
+                id = ExcelUtils.getCellValueAsString(metaRow0.getCell(1));
             }
         }
         
@@ -238,7 +238,7 @@ public class MultiMappingExcelConverter {
         
         // Read direction
         if (metaRow1 != null) {
-            String direction = getCellValueAsString(metaRow1.getCell(1));
+            String direction = ExcelUtils.getCellValueAsString(metaRow1.getCell(1));
             if (direction != null && !direction.trim().isEmpty()) {
                 mapping.setDirection(MappingDirection.valueOf(direction));
             }
@@ -246,7 +246,7 @@ public class MultiMappingExcelConverter {
         
         // Read source type
         if (metaRow2 != null) {
-            String sourceType = getCellValueAsString(metaRow2.getCell(1));
+            String sourceType = ExcelUtils.getCellValueAsString(metaRow2.getCell(1));
             if (sourceType != null && !sourceType.trim().isEmpty()) {
                 mapping.setSourceType(sourceType);
             }
@@ -254,7 +254,7 @@ public class MultiMappingExcelConverter {
         
         // Read target type
         if (metaRow3 != null) {
-            String targetType = getCellValueAsString(metaRow3.getCell(1));
+            String targetType = ExcelUtils.getCellValueAsString(metaRow3.getCell(1));
             if (targetType != null && !targetType.trim().isEmpty()) {
                 mapping.setTargetType(targetType);
             }
@@ -275,29 +275,29 @@ public class MultiMappingExcelConverter {
         
         // Build column map from header row
         Row headerRow = sheet.getRow(startRow - 1);
-        Map<String, Integer> columnMap = buildColumnMap(headerRow);
+        Map<String, Integer> columnMap = ExcelUtils.buildColumnMap(headerRow);
         
         // Read data rows
         for (int i = startRow; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
-            if (row == null || isRowEmpty(row)) continue;
+            if (row == null || ExcelUtils.isRowEmpty(row)) continue;
             
             FieldMapping fieldMapping = new FieldMapping();
             
-            fieldMapping.setId(getCellValue(row, columnMap, "id"));
-            fieldMapping.setSourcePath(getCellValue(row, columnMap, "sourcepath"));
-            fieldMapping.setTargetPath(getCellValue(row, columnMap, "targetpath"));
-            fieldMapping.setDataType(getCellValue(row, columnMap, "datatype"));
-            fieldMapping.setTransformExpression(getCellValue(row, columnMap, "transformexpression"));
-            fieldMapping.setCondition(getCellValue(row, columnMap, "condition"));
-            fieldMapping.setValidator(getCellValue(row, columnMap, "validator"));
+            fieldMapping.setId(ExcelUtils.getCellValue(row, columnMap, "id"));
+            fieldMapping.setSourcePath(ExcelUtils.getCellValue(row, columnMap, "sourcepath"));
+            fieldMapping.setTargetPath(ExcelUtils.getCellValue(row, columnMap, "targetpath"));
+            fieldMapping.setDataType(ExcelUtils.getCellValue(row, columnMap, "datatype"));
+            fieldMapping.setTransformExpression(ExcelUtils.getCellValue(row, columnMap, "transformexpression"));
+            fieldMapping.setCondition(ExcelUtils.getCellValue(row, columnMap, "condition"));
+            fieldMapping.setValidator(ExcelUtils.getCellValue(row, columnMap, "validator"));
             
-            String required = getCellValue(row, columnMap, "required");
+            String required = ExcelUtils.getCellValue(row, columnMap, "required");
             fieldMapping.setRequired("true".equalsIgnoreCase(required) || "yes".equalsIgnoreCase(required));
             
-            fieldMapping.setDefaultValue(getCellValue(row, columnMap, "defaultvalue"));
-            fieldMapping.setLookupTable(getCellValue(row, columnMap, "lookuptable"));
-            fieldMapping.setDescription(getCellValue(row, columnMap, "description"));
+            fieldMapping.setDefaultValue(ExcelUtils.getCellValue(row, columnMap, "defaultvalue"));
+            fieldMapping.setLookupTable(ExcelUtils.getCellValue(row, columnMap, "lookuptable"));
+            fieldMapping.setDescription(ExcelUtils.getCellValue(row, columnMap, "description"));
             
             fieldMappings.add(fieldMapping);
         }
@@ -315,8 +315,8 @@ public class MultiMappingExcelConverter {
     private void writeConfigSheet(Workbook workbook, List<ResourceMapping> mappings) {
         Sheet sheet = workbook.createSheet("Config");
         
-        CellStyle headerStyle = createHeaderStyle(workbook);
-        CellStyle instructionStyle = createInstructionStyle(workbook);
+        CellStyle headerStyle = ExcelUtils.createHeaderStyle(workbook);
+        CellStyle instructionStyle = ExcelUtils.createInstructionStyle(workbook);
         
         // Add instructions
         Row instructionRow = sheet.createRow(0);
@@ -327,22 +327,22 @@ public class MultiMappingExcelConverter {
         
         // Create header
         Row headerRow = sheet.createRow(2);
-        createCell(headerRow, 0, "Property", headerStyle);
-        createCell(headerRow, 1, "Value", headerStyle);
-        createCell(headerRow, 2, "Description", headerStyle);
+        ExcelUtils.createCell(headerRow, 0, "Property", headerStyle);
+        ExcelUtils.createCell(headerRow, 1, "Value", headerStyle);
+        ExcelUtils.createCell(headerRow, 2, "Description", headerStyle);
         
         // Get common version (use first mapping's version)
         String version = mappings.isEmpty() ? "1.0.0" : mappings.get(0).getVersion();
         
         // Write config
         int rowNum = 3;
-        createConfigRow(sheet, rowNum++, "version", version != null ? version : "1.0.0", 
+        ExcelUtils.createConfigRow(sheet, rowNum++, "version", version != null ? version : "1.0.0", 
             "Version for all mappings in this workbook");
-        createConfigRow(sheet, rowNum++, "fhirVersion", "R4", 
+        ExcelUtils.createConfigRow(sheet, rowNum++, "fhirVersion", "R4", 
             "FHIR version (R4, R5, etc.)");
-        createConfigRow(sheet, rowNum++, "author", "", 
+        ExcelUtils.createConfigRow(sheet, rowNum++, "author", "", 
             "Author/creator of mappings");
-        createConfigRow(sheet, rowNum++, "organization", "", 
+        ExcelUtils.createConfigRow(sheet, rowNum++, "organization", "", 
             "Organization");
         
         // Auto-size
@@ -357,7 +357,7 @@ public class MultiMappingExcelConverter {
     private void writeMappingSheet(Workbook workbook, ResourceMapping mapping) {
         // Sheet name: use mapping name or construct from ID
         String sheetName = mapping.getName() != null ? mapping.getName() : 
-            constructSheetName(mapping);
+        	constructSheetName(mapping);
         
         // Excel sheet names limited to 31 chars
         if (sheetName.length() > 31) {
@@ -366,27 +366,27 @@ public class MultiMappingExcelConverter {
         
         Sheet sheet = workbook.createSheet(sheetName);
         
-        CellStyle headerStyle = createHeaderStyle(workbook);
-        CellStyle metaStyle = createMetaStyle(workbook);
+        CellStyle headerStyle = ExcelUtils.createHeaderStyle(workbook);
+        CellStyle metaStyle = ExcelUtils.createMetaStyle(workbook);
         
         int rowNum = 0;
         
         // Write mapping metadata (with ID row first)
         Row metaRow0 = sheet.createRow(rowNum++);
-        createCell(metaRow0, 0, "ID:", metaStyle);
-        createCell(metaRow0, 1, mapping.getId());
+        ExcelUtils.createCell(metaRow0, 0, "ID:", metaStyle);
+        ExcelUtils.createCell(metaRow0, 1, mapping.getId());
         
         Row metaRow1 = sheet.createRow(rowNum++);
-        createCell(metaRow1, 0, "Direction:", metaStyle);
-        createCell(metaRow1, 1, mapping.getDirection() != null ? mapping.getDirection().name() : "");
+        ExcelUtils.createCell(metaRow1, 0, "Direction:", metaStyle);
+        ExcelUtils.createCell(metaRow1, 1, mapping.getDirection() != null ? mapping.getDirection().name() : "");
         
         Row metaRow2 = sheet.createRow(rowNum++);
-        createCell(metaRow2, 0, "Source Type:", metaStyle);
-        createCell(metaRow2, 1, mapping.getSourceType());
+        ExcelUtils.createCell(metaRow2, 0, "Source Type:", metaStyle);
+        ExcelUtils.createCell(metaRow2, 1, mapping.getSourceType());
         
         Row metaRow3 = sheet.createRow(rowNum++);
-        createCell(metaRow3, 0, "Target Type:", metaStyle);
-        createCell(metaRow3, 1, mapping.getTargetType());
+        ExcelUtils.createCell(metaRow3, 0, "Target Type:", metaStyle);
+        ExcelUtils.createCell(metaRow3, 1, mapping.getTargetType());
         
         rowNum++; // Blank row
         
@@ -398,7 +398,7 @@ public class MultiMappingExcelConverter {
         };
         
         for (int i = 0; i < headers.length; i++) {
-            createCell(headerRow, i, headers[i], headerStyle);
+            ExcelUtils.createCell(headerRow, i, headers[i], headerStyle);
         }
         
         // Write field mappings
@@ -406,17 +406,17 @@ public class MultiMappingExcelConverter {
             Row row = sheet.createRow(rowNum++);
             
             int colNum = 0;
-            createCell(row, colNum++, field.getId());
-            createCell(row, colNum++, field.getSourcePath());
-            createCell(row, colNum++, field.getTargetPath());
-            createCell(row, colNum++, field.getDataType());
-            createCell(row, colNum++, field.getTransformExpression());
-            createCell(row, colNum++, field.getCondition());
-            createCell(row, colNum++, field.getValidator());
-            createCell(row, colNum++, field.isRequired() ? "TRUE" : "FALSE");
-            createCell(row, colNum++, field.getDefaultValue());
-            createCell(row, colNum++, field.getLookupTable());
-            createCell(row, colNum++, field.getDescription());
+            ExcelUtils.createCell(row, colNum++, field.getId());
+            ExcelUtils.createCell(row, colNum++, field.getSourcePath());
+            ExcelUtils.createCell(row, colNum++, field.getTargetPath());
+            ExcelUtils.createCell(row, colNum++, field.getDataType());
+            ExcelUtils.createCell(row, colNum++, field.getTransformExpression());
+            ExcelUtils.createCell(row, colNum++, field.getCondition());
+            ExcelUtils.createCell(row, colNum++, field.getValidator());
+            ExcelUtils.createCell(row, colNum++, field.isRequired() ? "TRUE" : "FALSE");
+            ExcelUtils.createCell(row, colNum++, field.getDefaultValue());
+            ExcelUtils.createCell(row, colNum++, field.getLookupTable());
+            ExcelUtils.createCell(row, colNum++, field.getDescription());
         }
         
         // Auto-size columns
@@ -428,10 +428,6 @@ public class MultiMappingExcelConverter {
         }
     }
     
-    // ========================================================================
-    // Helper Methods
-    // ========================================================================
-    
     private String constructSheetName(ResourceMapping mapping) {
         String name = mapping.getSourceType();
         if (mapping.getDirection() == MappingDirection.JSON_TO_FHIR) {
@@ -442,129 +438,4 @@ public class MultiMappingExcelConverter {
         return name;
     }
     
-    private Map<String, Integer> buildColumnMap(Row headerRow) {
-        Map<String, Integer> map = new HashMap<>();
-        
-        if (headerRow == null) return map;
-        
-        Iterator<Cell> cellIterator = headerRow.cellIterator();
-        while (cellIterator.hasNext()) {
-            Cell cell = cellIterator.next();
-            String header = getCellValueAsString(cell);
-            if (header != null && !header.isEmpty()) {
-                map.put(header.toLowerCase().trim(), cell.getColumnIndex());
-            }
-        }
-        
-        return map;
-    }
-    
-    private String getCellValue(Row row, Map<String, Integer> columnMap, String columnName) {
-        Integer colIndex = columnMap.get(columnName.toLowerCase());
-        if (colIndex == null) return null;
-        
-        Cell cell = row.getCell(colIndex);
-        return getCellValueAsString(cell);
-    }
-    
-    private String getCellValueAsString(Cell cell) {
-        if (cell == null) return null;
-        
-        switch (cell.getCellType()) {
-            case STRING:
-                String value = cell.getStringCellValue();
-                // Return null for empty strings to avoid blank JSON values
-                return (value != null && !value.trim().isEmpty()) ? value : null;
-            case NUMERIC:
-                if (DateUtil.isCellDateFormatted(cell)) {
-                    return cell.getDateCellValue().toString();
-                }
-                return String.valueOf((long) cell.getNumericCellValue());
-            case BOOLEAN:
-                return String.valueOf(cell.getBooleanCellValue());
-            case FORMULA:
-                try {
-                    // Evaluate formula and get result
-                    String formulaValue = cell.getStringCellValue();
-                    return (formulaValue != null && !formulaValue.trim().isEmpty()) ? formulaValue : null;
-                } catch (Exception e) {
-                    return null;
-                }
-            case BLANK:
-                return null;
-            default:
-                return null;
-        }
-    }
-    
-    private boolean isRowEmpty(Row row) {
-        if (row == null) return true;
-        
-        for (int i = row.getFirstCellNum(); i < row.getLastCellNum(); i++) {
-            Cell cell = row.getCell(i);
-            if (cell != null && cell.getCellType() != CellType.BLANK) {
-                String value = getCellValueAsString(cell);
-                if (value != null && !value.trim().isEmpty()) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-    
-    private void createConfigRow(Sheet sheet, int rowNum, String property, String value, String description) {
-        Row row = sheet.createRow(rowNum);
-        createCell(row, 0, property);
-        createCell(row, 1, value != null ? value : "");
-        createCell(row, 2, description);
-    }
-    
-    private void createCell(Row row, int column, String value) {
-        Cell cell = row.createCell(column);
-        cell.setCellValue(value != null ? value : "");
-    }
-    
-    private void createCell(Row row, int column, String value, CellStyle style) {
-        Cell cell = row.createCell(column);
-        cell.setCellValue(value);
-        cell.setCellStyle(style);
-    }
-    
-    private CellStyle createHeaderStyle(Workbook workbook) {
-        CellStyle style = workbook.createCellStyle();
-        Font font = workbook.createFont();
-        font.setBold(true);
-        font.setFontHeightInPoints((short) 11);
-        font.setColor(IndexedColors.WHITE.getIndex());
-        style.setFont(font);
-        style.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
-        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        style.setBorderBottom(BorderStyle.THIN);
-        style.setBorderTop(BorderStyle.THIN);
-        style.setBorderLeft(BorderStyle.THIN);
-        style.setBorderRight(BorderStyle.THIN);
-        return style;
-    }
-    
-    private CellStyle createInstructionStyle(Workbook workbook) {
-        CellStyle style = workbook.createCellStyle();
-        Font font = workbook.createFont();
-        font.setItalic(true);
-        font.setColor(IndexedColors.DARK_BLUE.getIndex());
-        style.setFont(font);
-        style.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
-        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        style.setWrapText(true);
-        return style;
-    }
-    
-    private CellStyle createMetaStyle(Workbook workbook) {
-        CellStyle style = workbook.createCellStyle();
-        Font font = workbook.createFont();
-        font.setBold(true);
-        style.setFont(font);
-        style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
-        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        return style;
-    }
 }

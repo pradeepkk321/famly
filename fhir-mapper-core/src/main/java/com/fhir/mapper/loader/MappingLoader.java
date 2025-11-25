@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fhir.mapper.excel.ExcelLookupConverter;
 import com.fhir.mapper.excel.MultiMappingExcelConverter;
 import com.fhir.mapper.model.CodeLookupTable;
 import com.fhir.mapper.model.MappingRegistry;
@@ -28,6 +29,7 @@ import ca.uhn.fhir.context.FhirContext;
 public class MappingLoader {
     private final ObjectMapper objectMapper;
     private final MultiMappingExcelConverter multiConverter;
+    private final ExcelLookupConverter lookupConverter;
     private final String basePath;
     private final MappingValidator validator;
     private final boolean strictValidation;
@@ -59,6 +61,7 @@ public class MappingLoader {
                         FhirContext fhirContext, boolean enableExcelSupport) {
         this.objectMapper = new ObjectMapper();
         this.multiConverter = new MultiMappingExcelConverter();
+        this.lookupConverter = new ExcelLookupConverter();
         this.basePath = basePath;
         this.strictValidation = strictValidation;
         this.fhirContext = fhirContext;
@@ -141,8 +144,50 @@ public class MappingLoader {
         
         return registry;
     }
-
+    
     private Map<String, CodeLookupTable> loadLookupTables() throws IOException {
+        Map<String, CodeLookupTable> lookups = new HashMap<>();
+        
+        // Load JSON lookups
+        Path lookupsPath = Paths.get(lookupsDir);
+        if (Files.exists(lookupsPath)) {
+            List<Path> jsonFiles = Files.walk(lookupsPath, 1)
+                .filter(p -> p.toString().endsWith(".json"))
+                .collect(Collectors.toList());
+            
+            for (Path file : jsonFiles) {
+                CodeLookupTable lookup = objectMapper.readValue(file.toFile(), CodeLookupTable.class);
+                lookups.put(lookup.getId(), lookup);
+                System.out.println("  ✓ " + lookup.getId() + 
+                        " (JSON: " + file.getFileName() + ")");
+            }
+        }
+        
+        // Load Excel lookups (NEW)
+        if (enableExcelSupport) {
+            Path excelLookupsPath = Paths.get(basePath + "/lookups-excel");
+            if (Files.exists(excelLookupsPath)) {
+                List<Path> excelFiles = Files.walk(excelLookupsPath, 1)
+                    .filter(p -> p.toString().endsWith(".xlsx"))
+                    .collect(Collectors.toList());
+                
+                for (Path file : excelFiles) {
+                    List<CodeLookupTable> excelLookups = 
+                        lookupConverter.excelToLookupTables(file.toString());
+                    
+                    for (CodeLookupTable lookup : excelLookups) {
+                        lookups.put(lookup.getId(), lookup);
+                        System.out.println("  ✓ " + lookup.getId() + 
+                            " (Excel: " + file.getFileName() + ")");
+                    }
+                }
+            }
+        }
+        
+        return lookups;
+    }
+
+    private Map<String, CodeLookupTable> loadLookupTablesOld() throws IOException {
         Path lookupsPath = Paths.get(lookupsDir);
         if (!Files.exists(lookupsPath)) {
             System.out.println("  ℹ No lookups directory found, skipping lookup tables");
