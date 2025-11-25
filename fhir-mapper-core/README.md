@@ -58,29 +58,43 @@ Patient patient = engine.jsonToFhirResource(jsonInput, mapping, context, Patient
 
 ## Excel Support
 
-Business users can manage mappings and lookup tables using Excel without writing JSON:
+Business users can manage mappings and lookup tables using Excel without writing JSON.
+
+### Multiple Workbooks Supported
+
+**Use Case:** Different data sources, departments, or projects can have separate workbooks:
+- `epic-mappings.xlsx` - Epic EMR mappings
+- `cerner-mappings.xlsx` - Cerner EMR mappings
+- `terminology.xlsx` - Standard terminologies
+- `custom-codes.xlsx` - Organization-specific codes
+
+All workbooks in the directory are automatically loaded.
 
 ### Mapping Workbooks
-- One workbook = Multiple resource mappings
+- Multiple workbooks supported
+- Each workbook = Multiple resource mappings
 - Each sheet = One mapping (e.g., "Patient - JSON to FHIR")
 - Auto-converts to JSON on load
-- Changes in Excel automatically sync
 
 ### Lookup Workbooks
-- One workbook = Multiple lookup tables
+- Multiple workbooks supported
+- Each workbook = Multiple lookup tables
 - Each sheet = One lookup table
 - Supports per-mapping target systems
-- Easier to maintain than individual JSON files
 
 **Directory Structure:**
 ```
 mappings/
 ├── lookups/              # JSON lookups (legacy)
 ├── lookups-excel/        # Excel lookup workbooks
-│   └── all-lookups.xlsx  # Multiple sheets, one per lookup
+│   ├── standard-terminology.xlsx   # FHIR standard codes
+│   ├── epic-codes.xlsx             # Epic-specific codes
+│   └── custom-codes.xlsx           # Organization codes
 ├── json/                 # Manual JSON mappings
 ├── excel/                # Excel mapping workbooks
-│   └── all-mappings.xlsx # Multiple sheets, one per mapping
+│   ├── epic-mappings.xlsx          # Epic EMR mappings
+│   ├── cerner-mappings.xlsx        # Cerner EMR mappings
+│   └── lab-mappings.xlsx           # Lab system mappings
 └── excel-generated/      # Auto-generated (cleaned on load)
 ```
 
@@ -101,6 +115,11 @@ Row 10: O         | other      | http://custom.org/special-gender-system   | Oth
 ```
 
 Note: `targetSystem` in row 8+ is optional. If blank, uses `Default Target System` from row 4.
+
+**All Excel files are scanned:**
+- `mappings/excel/*.xlsx` → Resource mappings
+- `mappings/lookups-excel/*.xlsx` → Lookup tables
+- IDs must be unique across **all** workbooks
 
 ## Features
 
