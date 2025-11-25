@@ -2,7 +2,7 @@
 	"id": "telecom-use-lookup",
 	"name": "Telecom Use Lookup",
 	"sourceSystem": "internal",
-	"targetSystem": "http://hl7.org/fhir/contact-point-use",
+	"defaultTargetSystem": "http://hl7.org/fhir/contact-point-use",
 	"bidirectional": false,
 	"mappings": [
 		{

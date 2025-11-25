@@ -10,7 +10,7 @@ public class CodeLookupTable {
     private String id;
     private String name;
     private String sourceSystem;      // Source coding system
-    private String targetSystem;      // Target FHIR coding system
+    private String defaultTargetSystem;      // Target FHIR coding system
     private boolean bidirectional;    // If true, allows reverse lookups
     private String defaultSourceCode; // Fallback for reverse lookup
     private String defaultTargetCode; // Fallback for forward lookup
@@ -25,8 +25,8 @@ public class CodeLookupTable {
     public String getSourceSystem() { return sourceSystem; }
     public void setSourceSystem(String sourceSystem) { this.sourceSystem = sourceSystem; }
 
-    public String getTargetSystem() { return targetSystem; }
-    public void setTargetSystem(String targetSystem) { this.targetSystem = targetSystem; }
+    public String getDefaultTargetSystem() { return defaultTargetSystem; }
+    public void setDefaultTargetSystem(String defaultTargetSystem) { this.defaultTargetSystem = defaultTargetSystem; }
 
     public boolean isBidirectional() { return bidirectional; }
     public void setBidirectional(boolean bidirectional) { this.bidirectional = bidirectional; }
@@ -47,13 +47,33 @@ public class CodeLookupTable {
     /**
      * Lookup target code from source
      */
-    public String lookupTarget(String sourceCode) {
+//    public String lookupTarget(String sourceCode) {
+//        for (CodeMapping mapping : mappings) {
+//            if (mapping.getSourceCode().equals(sourceCode)) {
+//                return mapping.getTargetCode();
+//            }
+//        }
+//        return defaultTargetCode;
+//    }
+    
+    /**
+     * Lookup with system information
+     */
+    public CodeMappingResult lookupTargetWithSystem(String sourceCode) {
         for (CodeMapping mapping : mappings) {
             if (mapping.getSourceCode().equals(sourceCode)) {
-                return mapping.getTargetCode();
+                String system = mapping.getTargetSystem() != null ? 
+                    mapping.getTargetSystem() : defaultTargetSystem;
+                return new CodeMappingResult(mapping.getTargetCode(), system, mapping.getDisplay());
             }
         }
-        return defaultTargetCode;
+        return null;
+    }
+    
+    // Keep backward-compatible method
+    public String lookupTarget(String sourceCode) {
+        CodeMappingResult result = lookupTargetWithSystem(sourceCode);
+        return result != null ? result.getCode() : defaultTargetCode;
     }
 
     /**
@@ -77,7 +97,7 @@ public class CodeLookupTable {
             "id='" + id + '\'' +
             ", name='" + name + '\'' +
             ", sourceSystem='" + sourceSystem + '\'' +
-            ", targetSystem='" + targetSystem + '\'' +
+            ", defaultTargetSystem='" + defaultTargetSystem + '\'' +
             ", bidirectional=" + bidirectional +
             ", defaultSourceCode='" + defaultSourceCode + '\'' +
             ", defaultTargetCode='" + defaultTargetCode + '\'' +

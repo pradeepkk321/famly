@@ -34,10 +34,10 @@ public class TransformFunctions {
     }
     
     public String replace(String str, String target, String replacement) {
-        System.out.println("replace called: str=" + str + ", target=" + target + ", replacement=" + replacement);
+//        System.out.println("replace called: str=" + str + ", target=" + target + ", replacement=" + replacement);
         if (str == null) return null;
         String result = str.replace(target, replacement);
-        System.out.println("replace result: " + result);
+//        System.out.println("replace result: " + result);
         return result;
     }
     

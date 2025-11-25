@@ -2,7 +2,7 @@
 	"id": "language-lookup",
 	"name": "Language Code Lookup",
 	"sourceSystem": "internal",
-	"targetSystem": "urn:ietf:bcp:47",
+	"defaultTargetSystem": "urn:ietf:bcp:47",
 	"bidirectional": false,
 	"mappings": [
 		{

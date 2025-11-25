@@ -2,7 +2,7 @@
 	"id": "marital-status-lookup",
 	"name": "Marital Status Lookup",
 	"sourceSystem": "internal",
-	"targetSystem": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+	"defaultTargetSystem": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
 	"bidirectional": false,
 	"mappings": [
 		{
