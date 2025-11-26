@@ -1,6 +1,6 @@
 # FHIR Mapper Core
 
-A declarative, JSON-driven transformation framework for converting between custom JSON/POJO formats and HL7 FHIR resources.
+A declarative, Excel/JSON-driven transformation framework for converting between custom JSON/POJO formats and HL7 FHIR resources.
 
 [![Maven](https://img.shields.io/badge/Maven-3.8+-blue.svg)](https://maven.apache.org/)
 [![Java](https://img.shields.io/badge/Java-17+-orange.svg)](https://www.oracle.com/java/)
@@ -46,10 +46,7 @@ context.setOrganizationId("org-123");
 context.getSettings().put("identifierSystem", "urn:oid:2.16.840.1.113883.4.1");
 
 // 4. Get mapping
-ResourceMapping mapping = registry.findBySourceAndDirection(
-    "PatientDTO", 
-    MappingDirection.JSON_TO_FHIR
-);
+ResourceMapping mapping = registry.findById("patient-json-to-fhir-v1");
 
 // 5. Transform!
 String jsonInput = "{\"patientId\":\"P123\",\"firstName\":\"John\",\"lastName\":\"Doe\",\"gender\":\"M\"}";
@@ -115,6 +112,25 @@ Row 10: O         | other      | http://custom.org/special-gender-system   | Oth
 ```
 
 Note: `targetSystem` in row 8+ is optional. If blank, uses `Default Target System` from row 4.
+
+**Excel Mapping Format:**
+```
+Sheet: "Patient - JSON to FHIR"
+
+Row 1: ID:            | patient-json-to-fhir-v1
+Row 2: Direction:     | JSON_TO_FHIR
+Row 3: Source Type:   | PatientDTO
+Row 4: Target Type:   | Patient
+Row 5: (blank)
+Row 6: id           | sourcePath | targetPath           | dataType | transformExpression        | condition              | required | defaultValue              | lookupTable    | description
+Row 7: patient-id   | patientId  | identifier[0].value  | string   |                            |                        | TRUE     |                           |                | Patient MRN
+Row 8: patient-sys  |            | identifier[0].system | uri      |                            |                        | TRUE     | $ctx.settings['mrnSystem']|                | MRN system
+Row 9: patient-name | firstName  | name[0].given[0]     | string   |                            |                        | TRUE     |                           |                | First name
+Row 10: patient-ssn | ssn        | identifier[1].value  | string   | fn.replace(value, '-', '') | ssn != null            | FALSE    |                           |                | SSN no dashes
+Row 11: patient-gen | gender     | gender               | code     |                            |                        | TRUE     |                           | gender-lookup  | Gender code
+```
+
+**Multiple sheets = Multiple mappings** in one workbook.
 
 **All Excel files are scanned:**
 - `mappings/excel/*.xlsx` → Resource mappings
@@ -306,6 +322,32 @@ Map fields based on conditions:
 MappingLoader loader = new MappingLoader("./mappings", true); // strict=true
 MappingRegistry registry = loader.loadAll(); // Throws if validation fails
 ```
+### 8. Transformation Tracing
+
+Optionally logs a lightweight trace of the transformation process, helping you understand how each field was mapped. When enabled, the engine generates a small JSON summary containing the trace ID, mapping used, overall status, and basic per-field results. More details are available in the [Transformation Tracing](https://github.com/pradeepkk321/fhir-mapper/wiki/Transformation-Tracing) section.
+
+**Enable:**
+```java
+context.enableTracing();
+```
+
+**Use:**
+```
+TransformationTrace trace = context.getTrace();
+System.out.println(trace.toString()); // JSON summary
+```
+
+**Example Output (trimmed):**
+```
+{
+  "traceId": "abc-123",
+  "mappingId": "patient-json-to-fhir",
+  "success": true,
+  "fieldTransformationTraces": [
+    { "fieldId": "patient-id", "resultValue": "P123" }
+  ]
+}
+```
 
 ## Project Structure
 
@@ -405,6 +447,373 @@ your-project/
 }
 ```
 
+## REST API Integration Example
+
+```java
+@RestController
+@RequestMapping("/api/fhir")
+public class FhirTransformController {
+    
+    @Autowired private TransformationEngine engine;
+    @Autowired private MappingRegistry registry;
+    
+    @PostMapping("/patient")
+    public Patient createPatient(@RequestBody PatientDTO dto) throws Exception {
+        TransformationContext ctx = buildContext();
+        ResourceMapping mapping = registry.findBySourceAndDirection(
+            "PatientDTO", MappingDirection.JSON_TO_FHIR
+        );
+        return engine.jsonToFhirResource(dto, mapping, ctx, Patient.class);
+    }
+    
+    @GetMapping("/patient/{id}")
+    public PatientDTO getPatient(@PathVariable String id) throws Exception {
+        // Fetch from FHIR server
+        Patient fhirPatient = fhirClient.read()
+            .resource(Patient.class)
+            .withId(id)
+            .execute();
+        
+        TransformationContext ctx = buildContext();
+        ResourceMapping mapping = registry.findBySourceAndDirection(
+            "Patient", MappingDirection.FHIR_TO_JSON
+        );
+        return engine.fhirToJsonObject(fhirPatient, mapping, ctx, PatientDTO.class);
+    }
+    
+    private TransformationContext buildContext() {
+        TransformationContext ctx = new TransformationContext();
+        ctx.setOrganizationId(getCurrentOrganizationId());
+        ctx.getSettings().put("identifierSystem", getIdentifierSystem());
+        return ctx;
+    }
+}
+```
+## Transformation Tracing
+
+Track field-level transformation details for debugging and monitoring.
+
+### Enable Tracing
+```java
+TransformationContext context = new TransformationContext();
+context.setOrganizationId("org-123");
+
+// Enable tracing with random UUID
+context.enableTracing();
+
+// OR with custom trace ID
+context.enableTracing("trace-12345");
+```
+
+### Basic Usage
+```java
+ResourceMapping mapping = registry.findById("patient-json-to-fhir-v1");
+
+try {
+    Patient patient = engine.jsonToFhirResource(json, mapping, context, Patient.class);
+    
+    if (context.isEnableTracing()) {
+        TransformationTrace trace = context.getTrace();
+        
+        // Print summary report
+        trace.printTraceReport();
+        
+        // Get failed fields
+        List<FieldTransformationTrace> failures = trace.failedFieldTransformationTraces();
+        
+        // Export as JSON
+        System.out.println(trace.toString());
+    }
+    
+} catch (Exception e) {
+    // Trace available even on exception
+    if (context.isEnableTracing()) {
+        context.getTrace().printTraceReport();
+    }
+    throw e;
+}
+```
+
+### Trace Report Output
+```
+=== Transformation Trace Report ===
+Trace ID: abc-123-def-456
+Mapping: PatientDTO → Patient (patient-json-to-fhir-v1)
+Status: SUCCESS
+Duration: 45ms
+Total fields: 25
+Successful: 23
+Failed: 2
+
+Failures:
+  [patient-ssn] ssn
+    Error: Required field is null after all transformations
+    Source value: null
+
+  [patient-middle-name] middleName
+    Error: Transform failed: Expression evaluation error
+    Expression: fn.uppercase(value)
+    Source value: null
+```
+
+### JSON Trace Export
+```java
+// Get JSON representation
+String traceJson = trace.toString();
+
+// Save to file for analysis
+String filename = "traces/" + trace.getTraceId() + ".json";
+Files.write(Paths.get(filename), traceJson.getBytes());
+```
+
+**JSON Structure:**
+```json
+{
+  "traceId": "98c15d0e-6508-4e3b-ab46-5f4e0b1256ab",
+  "source": "ComplexPatientDTO",
+  "target": "Patient",
+  "mappingId": "complex-patient-v1",
+  "success": true,
+  "errorMessage": "null",
+  "startTime": 1764175004539,
+  "endTime": 1764175004623,
+  "duration": "84 millis",
+  "fieldTransformationTraces": [
+    {
+      "fieldId": "patient-mrn",
+      "sourcePath": "patientId",
+      "targetPath": "identifier[0].value",
+      "sourceValue": "MRN-12345678",
+      "resultValue": "MRN-12345678",
+      "expression": "null",
+      "condition": "null",
+      "conditionPassed": false,
+      "errorMessage": "null",
+      "startTime": 1764175004548,
+      "endTime": 1764175004548,
+      "duration": "0 millis"
+    },
+    {
+      "fieldId": "patient-mrn-system",
+      "sourcePath": "null",
+      "targetPath": "identifier[0].system",
+      "sourceValue": "null",
+      "resultValue": "urn:oid:2.16.840.1.113883.4.1",
+      "expression": "null",
+      "condition": "null",
+      "conditionPassed": false,
+      "errorMessage": "null",
+      "startTime": 1764175004548,
+      "endTime": 1764175004548,
+      "duration": "0 millis"
+    },
+    {
+      "fieldId": "patient-mrn-type-code",
+      "sourcePath": "null",
+      "targetPath": "identifier[0].type.coding[0].code",
+      "sourceValue": "null",
+      "resultValue": "MR",
+      "expression": "null",
+      "condition": "null",
+      "conditionPassed": false,
+      "errorMessage": "null",
+      "startTime": 1764175004548,
+      "endTime": 1764175004548,
+      "duration": "0 millis"
+    },
+    {
+      "fieldId": "patient-mrn-type-system",
+      "sourcePath": "null",
+      "targetPath": "identifier[0].type.coding[0].system",
+      "sourceValue": "null",
+      "resultValue": "http://terminology.hl7.org/CodeSystem/v2-0203",
+      "expression": "null",
+      "condition": "null",
+      "conditionPassed": false,
+      "errorMessage": "null",
+      "startTime": 1764175004548,
+      "endTime": 1764175004548,
+      "duration": "0 millis"
+    },
+    {
+      "fieldId": "patient-ssn",
+      "sourcePath": "ssn",
+      "targetPath": "identifier[1].value",
+      "sourceValue": "123-45-6789",
+      "resultValue": "123456789",
+      "expression": "fn:replace(value, '-', '')",
+      "condition": "ssn != null && ssn != ''",
+      "conditionPassed": true,
+      "errorMessage": "null",
+      "startTime": 1764175004548,
+      "endTime": 1764175004568,
+      "duration": "20 millis"
+    },
+    {...},
+    {...},
+    .
+    .
+    .
+  ]
+}
+```
+
+### Analyze Specific Issues
+```java
+TransformationTrace trace = context.getTrace();
+
+// Find null resolutions
+List<FieldTransformationTrace> nullFields = trace.getFieldTransformationTraces().stream()
+    .filter(f -> f.getSourceValue() == null)
+    .collect(Collectors.toList());
+
+// Find slow transformations (>10ms)
+List<FieldTransformationTrace> slowFields = trace.getFieldTransformationTraces().stream()
+    .filter(f -> f.getDuration() > 10)
+    .collect(Collectors.toList());
+
+// Find failed conditions
+List<FieldTransformationTrace> failedConditions = trace.getFieldTransformationTraces().stream()
+    .filter(f -> f.getCondition() != null && !f.isConditionPassed())
+    .collect(Collectors.toList());
+
+// Find transformation errors
+List<FieldTransformationTrace> transformErrors = trace.getFieldTransformationTraces().stream()
+    .filter(f -> f.getExpression() != null && f.getErrorMessage() != null)
+    .collect(Collectors.toList());
+```
+
+### Production Usage
+
+Tracing adds ~5-10% overhead. Enable selectively:
+```java
+// Only for specific patients
+if (patientId.equals("debug-patient-123")) {
+    context.enableTracing(patientId);
+}
+
+// Only in development
+if (environment.equals("dev") || environment.equals("staging")) {
+    context.enableTracing();
+}
+
+// For error investigation
+try {
+    Patient patient = engine.jsonToFhirResource(json, mapping, context, Patient.class);
+} catch (TransformationException e) {
+    // Enable tracing and retry for debugging
+    context.enableTracing("error-investigation-" + System.currentTimeMillis());
+    Patient patient = engine.jsonToFhirResource(json, mapping, context, Patient.class);
+    context.getTrace().printTraceReport();
+}
+```
+
+### REST API Integration
+```java
+@PostMapping("/transform/patient")
+public ResponseEntity<PatientResponse> transform(
+        @RequestBody PatientDTO dto,
+        @RequestHeader(value = "X-Enable-Trace", required = false) String enableTrace) {
+    
+    TransformationContext context = buildContext();
+    
+    // Enable tracing if requested
+    if ("true".equals(enableTrace)) {
+        String traceId = UUID.randomUUID().toString();
+        context.enableTracing(traceId);
+    }
+    
+    Patient patient = engine.jsonToFhirResource(dto, mapping, context, Patient.class);
+    
+    PatientResponse response = new PatientResponse(patient);
+    
+    // Include trace in response if enabled
+    if (context.isEnableTracing()) {
+        response.setTrace(context.getTrace());
+    }
+    
+    return ResponseEntity.ok(response);
+}
+```
+
+### Field-Level Details
+
+Access individual field transformation details:
+```java
+for (FieldTransformationTrace field : trace.getFieldTransformationTraces()) {
+    System.out.println("Field: " + field.getFieldId());
+    System.out.println("  Source path: " + field.getSourcePath());
+    System.out.println("  Target path: " + field.getTargetPath());
+    System.out.println("  Source value: " + field.getSourceValue());
+    System.out.println("  Result value: " + field.getResultValue());
+    System.out.println("  Duration: " + field.getDuration() + "ms");
+    
+    if (field.getExpression() != null) {
+        System.out.println("  Expression: " + field.getExpression());
+    }
+    
+    if (field.getCondition() != null) {
+        System.out.println("  Condition: " + field.getCondition());
+        System.out.println("  Condition passed: " + field.isConditionPassed());
+    }
+    
+    if (field.getErrorMessage() != null) {
+        System.out.println("  ERROR: " + field.getErrorMessage());
+    }
+}
+```
+
+## Complex Mapping Example
+
+See the complete example in `ComplexRealTimeExample.java` which demonstrates:
+
+- Multiple identifiers (MRN, SSN)
+- Name with suffix
+- Multiple addresses and contacts
+- Race/ethnicity extensions (US Core)
+- Birth sex extension
+- Marital status with code system
+- Preferred language
+- Managing organization reference
+
+The mapping configuration shows how to handle:
+- Array indexing (`addresses[0]`, `name[0].given[1]`)
+- Conditional fields (`condition: "ssn != null && ssn != ''"`)
+- Extensions with nested structure
+- Code lookups for standardization
+- Context-based default values
+
+## Validation & Security
+
+### Validation Modes
+
+```java
+// Strict mode (default) - throws on validation errors
+MappingLoader loader = new MappingLoader("./mappings", true);
+
+// Lenient mode - logs errors but continues
+MappingLoader loader = new MappingLoader("./mappings", false);
+```
+
+### Security Scanning
+
+The framework automatically scans expressions for dangerous patterns:
+
+**CRITICAL Issues** (always fails):
+- Runtime execution (`Runtime.getRuntime()`)
+- Process creation (`ProcessBuilder`)
+- Script engines (`ScriptEngine`)
+
+**HIGH Issues** (logged):
+- Reflection (`Class.forName`, `Method.invoke`)
+- Network I/O (`Socket`, `URLConnection`)
+- Database access (`java.sql.*`)
+
+**MEDIUM/LOW Issues** (warnings):
+- File I/O (`File`, `FileInputStream`)
+- Threading (`new Thread()`)
+
+
 ## Advanced Usage
 
 ### Batch Processing
@@ -461,99 +870,6 @@ if (!result.isValid()) {
     }
 }
 ```
-
-## REST API Integration Example
-
-```java
-@RestController
-@RequestMapping("/api/fhir")
-public class FhirTransformController {
-    
-    @Autowired private TransformationEngine engine;
-    @Autowired private MappingRegistry registry;
-    
-    @PostMapping("/patient")
-    public Patient createPatient(@RequestBody PatientDTO dto) throws Exception {
-        TransformationContext ctx = buildContext();
-        ResourceMapping mapping = registry.findBySourceAndDirection(
-            "PatientDTO", MappingDirection.JSON_TO_FHIR
-        );
-        return engine.jsonToFhirResource(dto, mapping, ctx, Patient.class);
-    }
-    
-    @GetMapping("/patient/{id}")
-    public PatientDTO getPatient(@PathVariable String id) throws Exception {
-        // Fetch from FHIR server
-        Patient fhirPatient = fhirClient.read()
-            .resource(Patient.class)
-            .withId(id)
-            .execute();
-        
-        TransformationContext ctx = buildContext();
-        ResourceMapping mapping = registry.findBySourceAndDirection(
-            "Patient", MappingDirection.FHIR_TO_JSON
-        );
-        return engine.fhirToJsonObject(fhirPatient, mapping, ctx, PatientDTO.class);
-    }
-    
-    private TransformationContext buildContext() {
-        TransformationContext ctx = new TransformationContext();
-        ctx.setOrganizationId(getCurrentOrganizationId());
-        ctx.getSettings().put("identifierSystem", getIdentifierSystem());
-        return ctx;
-    }
-}
-```
-
-## Complex Mapping Example
-
-See the complete example in `ComplexRealTimeExample.java` which demonstrates:
-
-- Multiple identifiers (MRN, SSN)
-- Name with suffix
-- Multiple addresses and contacts
-- Race/ethnicity extensions (US Core)
-- Birth sex extension
-- Marital status with code system
-- Preferred language
-- Managing organization reference
-
-The mapping configuration shows how to handle:
-- Array indexing (`addresses[0]`, `name[0].given[1]`)
-- Conditional fields (`condition: "ssn != null && ssn != ''"`)
-- Extensions with nested structure
-- Code lookups for standardization
-- Context-based default values
-
-## Validation & Security
-
-### Validation Modes
-
-```java
-// Strict mode (default) - throws on validation errors
-MappingLoader loader = new MappingLoader("./mappings", true);
-
-// Lenient mode - logs errors but continues
-MappingLoader loader = new MappingLoader("./mappings", false);
-```
-
-### Security Scanning
-
-The framework automatically scans expressions for dangerous patterns:
-
-**CRITICAL Issues** (always fails):
-- Runtime execution (`Runtime.getRuntime()`)
-- Process creation (`ProcessBuilder`)
-- Script engines (`ScriptEngine`)
-
-**HIGH Issues** (logged):
-- Reflection (`Class.forName`, `Method.invoke`)
-- Network I/O (`Socket`, `URLConnection`)
-- Database access (`java.sql.*`)
-
-**MEDIUM/LOW Issues** (warnings):
-- File I/O (`File`, `FileInputStream`)
-- Threading (`new Thread()`)
 
 ## Limitations
 
@@ -655,7 +971,7 @@ Contributions are welcome! Please:
 ## Support
 
 For issues and questions:
-- GitHub Issues: [link]
+- GitHub Issues: [link](https://github.com/pradeepkk321/fhir-mapper/issues)
 - Documentation: [link]
 - Email: pradyskumar@gmail.com
 
