@@ -325,6 +325,32 @@ Map fields based on conditions:
 MappingLoader loader = new MappingLoader("./mappings", true); // strict=true
 MappingRegistry registry = loader.loadAll(); // Throws if validation fails
 ```
+### 8. Transformation Tracing
+
+Optionally logs a lightweight trace of the transformation process, helping you understand how each field was mapped. When enabled, the engine generates a small JSON summary containing the trace ID, mapping used, overall status, and basic per-field results. More details are available in the [Transformation Tracing](#transformation-tracing) section.
+
+**Enable:**
+```java
+context.enableTracing();
+```
+
+**Use:**
+```
+TransformationTrace trace = context.getTrace();
+System.out.println(trace.toString()); // JSON summary
+```
+
+**Example Output (trimmed):**
+```
+{
+  "traceId": "abc-123",
+  "mappingId": "patient-json-to-fhir",
+  "success": true,
+  "fieldTransformationTraces": [
+    { "fieldId": "patient-id", "resultValue": "P123" }
+  ]
+}
+```
 
 ## Project Structure
 
