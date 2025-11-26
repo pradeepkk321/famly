@@ -17,6 +17,7 @@ FHIR Mapper Core eliminates the need to write Java transformation code for each 
 - **Conditional field mapping** with context variables
 - **Validation** against HAPI FHIR structure definitions
 - **Security scanning** to prevent malicious expressions
+- **Optional tracing:** to track field-level transformation details(success/failures) for debugging and monitoring.
 
 ## Quick Start
 
