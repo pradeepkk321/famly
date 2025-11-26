@@ -322,6 +322,70 @@ Map fields based on conditions:
 MappingLoader loader = new MappingLoader("./mappings", true); // strict=true
 MappingRegistry registry = loader.loadAll(); // Throws if validation fails
 ```
+**Console Log: Load Mappings**
+```
+╔════════════════════════════════════════════════════════════╗
+║  FHIR Mapper - Loading Mappings                            ║
+╚════════════════════════════════════════════════════════════╝
+
+Base path: ./mappings
+FHIR Version: 4.0.1
+Excel Support: Enabled
+
+Cleaning up excel-generated directory...
+✓ Cleaned up excel-generated directory
+
+Loading lookup tables...
+  ✓ address-use-lookup (JSON: address-use-lookup.json)
+  ✓ birth-sex-lookup (JSON: birth-sex-lookup.json)
+  ✓ ethnicity-text-lookup (JSON: ethnicity-text-lookup.json)
+  ✓ gender-lookup-reverse (JSON: gender-lookup-reverse.json)
+  ✓ gender-lookup (JSON: gender-lookup.json)
+  ✓ language-lookup (JSON: language-lookup.json)
+  ✓ marital-status-lookup (JSON: marital-status-lookup.json)
+  ✓ race-text-lookup (JSON: race-text-lookup.json)
+  ✓ telecom-use-lookup (JSON: telecom-use-lookup.json)
+ERROR StatusLogger Log4j2 could not find a logging implementation. Please add log4j-core to the classpath. Using SimpleLogger to log to the console...
+  ✓ address-use-lookup (Excel: all-lookups.xlsx)
+  ✓ birth-sex-lookup (Excel: all-lookups.xlsx)
+  ✓ ethnicity-text-lookup (Excel: all-lookups.xlsx)
+  ✓ gender-lookup-reverse (Excel: all-lookups.xlsx)
+  ✓ gender-lookup (Excel: all-lookups.xlsx)
+  ✓ language-lookup (Excel: all-lookups.xlsx)
+  ✓ marital-status-lookup (Excel: all-lookups.xlsx)
+  ✓ race-text-lookup (Excel: all-lookups.xlsx)
+  ✓ telecom-use-lookup (Excel: all-lookups.xlsx)
+✓ Loaded 9 lookup tables
+
+Loading resource mappings...
+  ✓ patient-complex-json-to-fhir-v1 [JSON_TO_FHIR] (JSON: patient-complex-json-to-fhir.json)
+  📊 Converting Excel workbook: all-mappings.xlsx...
+    ✓ complex-patient-v1 [JSON_TO_FHIR] (Sheet: Patient-V1)
+      → Generated: excel-generated/complex-patient-v1.json
+    ✓ complex-patient-v2 [JSON_TO_FHIR] (Sheet: Patient-V2)
+      → Generated: excel-generated/complex-patient-v2.json
+    ✓ patient-fhir-to-json [FHIR_TO_JSON] (Sheet: Patient FHIR to JSON Mapping)
+      → Generated: excel-generated/patient-fhir-to-json.json
+    ✓ patient-json-to-fhir [JSON_TO_FHIR] (Sheet: Patient JSON to FHIR Mapping)
+      → Generated: excel-generated/patient-json-to-fhir.json
+✓ Loaded 5 resource mappings
+  - 1 from JSON directory
+  - 4 from 1 Excel workbook(s)
+
+Validating mappings using HAPI FHIR structure definitions...
+Validation warnings:
+  [WARN] Mapping: patient-complex-json-to-fhir-v1, Field: patient-managing-org: Field has neither sourcePath nor defaultValue
+  [WARN] Mapping: complex-patient-v1, Field: patient-managing-org: Field has neither sourcePath nor defaultValue
+  [WARN] Mapping: complex-patient-v2, Field: patient-managing-org: Field has neither sourcePath nor defaultValue
+  [WARN] Mapping: patient-json-to-fhir, Field: patient-managing-org: Field has neither sourcePath nor defaultValue
+Running security validation...
+✓ Security validation passed - no issues found
+
+╔════════════════════════════════════════════════════════════╗
+║  Mapping registry loaded successfully                      ║
+╚════════════════════════════════════════════════════════════╝
+```
+
 ### 8. Transformation Tracing
 
 Optionally logs a lightweight trace of the transformation process, helping you understand how each field was mapped. When enabled, the engine generates a small JSON summary containing the trace ID, mapping used, overall status, and basic per-field results. More details are available in the [Transformation Tracing](https://github.com/pradeepkk321/fhir-mapper/wiki/Transformation-Tracing) section.
