@@ -569,27 +569,91 @@ Files.write(Paths.get(filename), traceJson.getBytes());
 **JSON Structure:**
 ```json
 {
-  "traceId": "abc-123-def-456",
-  "source": "PatientDTO",
+  "traceId": "98c15d0e-6508-4e3b-ab46-5f4e0b1256ab",
+  "source": "ComplexPatientDTO",
   "target": "Patient",
-  "mappingId": "patient-json-to-fhir-v1",
+  "mappingId": "complex-patient-v1",
   "success": true,
-  "startTime": 1701234567890,
-  "endTime": 1701234567935,
+  "errorMessage": "null",
+  "startTime": 1764175004539,
+  "endTime": 1764175004623,
+  "duration": "84 millis",
   "fieldTransformationTraces": [
     {
-      "fieldId": "patient-id",
+      "fieldId": "patient-mrn",
       "sourcePath": "patientId",
       "targetPath": "identifier[0].value",
-      "sourceValue": "P123",
-      "resultValue": "P123",
-      "expression": null,
-      "condition": null,
+      "sourceValue": "MRN-12345678",
+      "resultValue": "MRN-12345678",
+      "expression": "null",
+      "condition": "null",
       "conditionPassed": false,
-      "errorMessage": null,
-      "startTime": 1701234567891,
-      "endTime": 1701234567892
-    }
+      "errorMessage": "null",
+      "startTime": 1764175004548,
+      "endTime": 1764175004548,
+      "duration": "0 millis"
+    },
+    {
+      "fieldId": "patient-mrn-system",
+      "sourcePath": "null",
+      "targetPath": "identifier[0].system",
+      "sourceValue": "null",
+      "resultValue": "urn:oid:2.16.840.1.113883.4.1",
+      "expression": "null",
+      "condition": "null",
+      "conditionPassed": false,
+      "errorMessage": "null",
+      "startTime": 1764175004548,
+      "endTime": 1764175004548,
+      "duration": "0 millis"
+    },
+    {
+      "fieldId": "patient-mrn-type-code",
+      "sourcePath": "null",
+      "targetPath": "identifier[0].type.coding[0].code",
+      "sourceValue": "null",
+      "resultValue": "MR",
+      "expression": "null",
+      "condition": "null",
+      "conditionPassed": false,
+      "errorMessage": "null",
+      "startTime": 1764175004548,
+      "endTime": 1764175004548,
+      "duration": "0 millis"
+    },
+    {
+      "fieldId": "patient-mrn-type-system",
+      "sourcePath": "null",
+      "targetPath": "identifier[0].type.coding[0].system",
+      "sourceValue": "null",
+      "resultValue": "http://terminology.hl7.org/CodeSystem/v2-0203",
+      "expression": "null",
+      "condition": "null",
+      "conditionPassed": false,
+      "errorMessage": "null",
+      "startTime": 1764175004548,
+      "endTime": 1764175004548,
+      "duration": "0 millis"
+    },
+    {
+      "fieldId": "patient-ssn",
+      "sourcePath": "ssn",
+      "targetPath": "identifier[1].value",
+      "sourceValue": "123-45-6789",
+      "resultValue": "123456789",
+      "expression": "fn:replace(value, '-', '')",
+      "condition": "ssn != null && ssn != ''",
+      "conditionPassed": true,
+      "errorMessage": "null",
+      "startTime": 1764175004548,
+      "endTime": 1764175004568,
+      "duration": "20 millis"
+    },
+    {...},
+    {...},
+    .
+    .
+    .
   ]
 }
 ```
