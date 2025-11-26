@@ -17,9 +17,10 @@ public class TransformationContext {
     private String facilityId;
     private String tenantId;
     private Map<String, String> settings;
-    private String mappingId;
-    private String traceId;
-    private List<TransformationTrace> traces = new ArrayList<>();
+//    private String mappingId;
+//    private String traceId;
+//    private List<TransformationTrace> traces = new ArrayList<>();
+    private TransformationTrace trace;
     private boolean enableTracing = false;
 
     public TransformationContext() {
@@ -42,11 +43,11 @@ public class TransformationContext {
     public Map<String, String> getSettings() { return settings; }
     public void setSettings(Map<String, String> settings) { this.settings = settings; }
 
-    public String getMappingId() { return mappingId; }
-    public void setMappingId(String mappingId) { this.mappingId = mappingId; }
-
-    public String getTraceId() { return traceId; }
-    public void setTraceId(String traceId) { this.traceId = traceId; }
+//    public String getMappingId() { return mappingId; }
+//    public void setMappingId(String mappingId) { this.mappingId = mappingId; }
+//
+//    public String getTraceId() { return traceId; }
+//    public void setTraceId(String traceId) { this.traceId = traceId; }
 
     public boolean isEnableTracing() {
 		return enableTracing;
@@ -58,7 +59,8 @@ public class TransformationContext {
      */
 	public void enableTracing() {
 		this.enableTracing = true;
-		this.traceId = UUID.randomUUID().toString();
+		this.trace = new TransformationTrace(UUID.randomUUID().toString());
+//		this.traceId = UUID.randomUUID().toString();
 	}
 
 	/**
@@ -67,7 +69,12 @@ public class TransformationContext {
 	 */
 	public void enableTracing(String traceId) {
 		this.enableTracing = true;
-		this.traceId = traceId;
+		this.trace = new TransformationTrace(traceId);
+//		this.traceId = traceId;
+	}
+	
+	public TransformationTrace getTrace() {
+		return enableTracing ? this.trace : null;
 	}
 
 	public void setVariable(String key, Object value) {
@@ -78,40 +85,40 @@ public class TransformationContext {
         return variables.get(key);
     }
     
-    public void addTrace(TransformationTrace trace) {
-        if (enableTracing) {
-            traces.add(trace);
-        }
-    }
+//    public void addTrace(FieldTransformationTrace trace) {
+//        if (enableTracing) {
+//            traces.add(trace);
+//        }
+//    }
     
-    public List<TransformationTrace> getTraces() {
-        return traces;
-    }
-    
-    public List<TransformationTrace> getFailedTraces() {
-        return traces.stream()
-            .filter(t -> !t.isSuccess())
-            .collect(Collectors.toList());
-    }
-    
-    public void printTraceReport() {
-        System.out.println("\n=== Transformation Trace Report ===");
-        System.out.println("Total fields: " + traces.size());
-        System.out.println("Successful: " + traces.stream().filter(TransformationTrace::isSuccess).count());
-        System.out.println("Failed: " + getFailedTraces().size());
-        
-        if (!getFailedTraces().isEmpty()) {
-            System.out.println("\nFailures:");
-            for (TransformationTrace trace : getFailedTraces()) {
-                System.out.println("  [" + trace.getFieldId() + "] " + trace.getSourcePath());
-                System.out.println("    Error: " + trace.getErrorMessage());
-                if (trace.getExpression() != null) {
-                    System.out.println("    Expression: " + trace.getExpression());
-                }
-                System.out.println("    Source value: " + trace.getSourceValue());
-            }
-        }
-    }
+//    public List<TransformationTrace> getTraces() {
+//        return traces;
+//    }
+//    
+//    public List<TransformationTrace> getFailedTraces() {
+//        return traces.stream()
+//            .filter(t -> !t.isSuccess())
+//            .collect(Collectors.toList());
+//    }
+//    
+//    public void printTraceReport() {
+//        System.out.println("\n=== Transformation Trace Report ===");
+//        System.out.println("Total fields: " + traces.size());
+//        System.out.println("Successful: " + traces.stream().filter(TransformationTrace::isSuccess).count());
+//        System.out.println("Failed: " + getFailedTraces().size());
+//        
+//        if (!getFailedTraces().isEmpty()) {
+//            System.out.println("\nFailures:");
+//            for (TransformationTrace trace : getFailedTraces()) {
+//                System.out.println("  [" + trace.getFieldId() + "] " + trace.getSourcePath());
+//                System.out.println("    Error: " + trace.getErrorMessage());
+//                if (trace.getExpression() != null) {
+//                    System.out.println("    Expression: " + trace.getExpression());
+//                }
+//                System.out.println("    Source value: " + trace.getSourceValue());
+//            }
+//        }
+//    }
     
     @Override
     public String toString() {
@@ -119,7 +126,6 @@ public class TransformationContext {
             "organizationId='" + organizationId + '\'' +
             ", facilityId='" + facilityId + '\'' +
             ", tenantId='" + tenantId + '\'' +
-            ", mappingId='" + mappingId + '\'' +
             ", variablesCount=" + (variables != null ? variables.size() : 0) +
             ", settingsCount=" + (settings != null ? settings.size() : 0) +
             '}';

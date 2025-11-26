@@ -1,20 +1,50 @@
 package com.fhir.mapper.model;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
 public class TransformationTrace {
-    private String mappingId;
-    private String fieldId;
-    private String sourcePath;
-    private String targetPath;
-    private Object sourceValue;
-    private Object resultValue;
-    private String expression;
-    private String condition;
-    private boolean conditionPassed;
-    private String errorMessage;
-    private long startTime;
-    private long endTime;
-    
-    public String getMappingId() {
+
+	private String traceId;
+	private String source;
+	private String target;
+	private String mappingId;
+	private boolean success;
+	private String errorMessage;
+	private long startTime;
+	private long endTime;
+	private List<FieldTransformationTrace> fieldTransformationTraces = new ArrayList<>();
+
+	public TransformationTrace(String traceId) {
+		this.traceId = traceId;
+	}
+
+	public String getTraceId() {
+		return traceId;
+	}
+
+	public void setTraceId(String traceId) {
+		this.traceId = traceId;
+	}
+
+	public String getSource() {
+		return source;
+	}
+
+	public void setSource(String source) {
+		this.source = source;
+	}
+
+	public String getTarget() {
+		return target;
+	}
+
+	public void setTarget(String target) {
+		this.target = target;
+	}
+
+	public String getMappingId() {
 		return mappingId;
 	}
 
@@ -22,68 +52,12 @@ public class TransformationTrace {
 		this.mappingId = mappingId;
 	}
 
-	public String getFieldId() {
-		return fieldId;
+	public boolean isSuccess() {
+		return success;
 	}
 
-	public void setFieldId(String fieldId) {
-		this.fieldId = fieldId;
-	}
-
-	public String getSourcePath() {
-		return sourcePath;
-	}
-
-	public void setSourcePath(String sourcePath) {
-		this.sourcePath = sourcePath;
-	}
-
-	public String getTargetPath() {
-		return targetPath;
-	}
-
-	public void setTargetPath(String targetPath) {
-		this.targetPath = targetPath;
-	}
-
-	public Object getSourceValue() {
-		return sourceValue;
-	}
-
-	public void setSourceValue(Object sourceValue) {
-		this.sourceValue = sourceValue;
-	}
-
-	public Object getResultValue() {
-		return resultValue;
-	}
-
-	public void setResultValue(Object resultValue) {
-		this.resultValue = resultValue;
-	}
-
-	public String getExpression() {
-		return expression;
-	}
-
-	public void setExpression(String expression) {
-		this.expression = expression;
-	}
-
-	public String getCondition() {
-		return condition;
-	}
-
-	public void setCondition(String condition) {
-		this.condition = condition;
-	}
-
-	public boolean isConditionPassed() {
-		return conditionPassed;
-	}
-
-	public void setConditionPassed(boolean conditionPassed) {
-		this.conditionPassed = conditionPassed;
+	public void setSuccess(boolean success) {
+		this.success = success;
 	}
 
 	public String getErrorMessage() {
@@ -110,36 +84,82 @@ public class TransformationTrace {
 		this.endTime = endTime;
 	}
 
-	public boolean isSuccess() {
-        return errorMessage == null;
-    }
+	public List<FieldTransformationTrace> getFieldTransformationTraces() {
+		return fieldTransformationTraces;
+	}
+
+	public void setFieldTransformationTraces(List<FieldTransformationTrace> traces) {
+		this.fieldTransformationTraces = traces;
+	}
+
+	public void addFieldTransformationTrace(FieldTransformationTrace trace) {
+		fieldTransformationTraces.add(trace);
+	}
+
+	public List<FieldTransformationTrace> failedFieldTransformationTraces() {
+		return fieldTransformationTraces.stream().filter(t -> !t.isSuccess()).collect(Collectors.toList());
+	}
     
     public long getDuration() {
         return endTime - startTime;
     }
-    
-    @Override
-    public String toString() {
-        return "{"
-                + "\"mappingId\":\"" + escape(mappingId) + "\","
-                + "\"fieldId\":\"" + escape(fieldId) + "\","
-                + "\"sourcePath\":\"" + escape(sourcePath) + "\","
-                + "\"targetPath\":\"" + escape(targetPath) + "\","
-                + "\"sourceValue\":\"" + escape(String.valueOf(sourceValue)) + "\","
-                + "\"resultValue\":\"" + escape(String.valueOf(resultValue)) + "\","
-                + "\"expression\":\"" + escape(expression) + "\","
-                + "\"condition\":\"" + escape(condition) + "\","
-                + "\"conditionPassed\":" + conditionPassed + ","
-                + "\"errorMessage\":\"" + escape(errorMessage) + "\","
-                + "\"startTime\":" + startTime + ","
-                + "\"endTime\":" + endTime + ","
-                + "\"duration\":" + getDuration()
-                + "}";
-    }
 
-    private String escape(String v) {
-        if (v == null) return null;
-        return v.replace("\"", "\\\"");
-    }
+	public void printTraceReport() {
+		System.out.println("\n=== Transformation Trace Report ===");
+		System.out.println("Trace ID: " + traceId);
+		System.out.println("Mapping ID: " + mappingId);
+		System.out.println("Is success: " + success);
+		if(!success)
+			System.out.println("Error: " + errorMessage);
+		System.out.println("Duration: " + getDuration() + "ms");
+		System.out.println("Total fields: " + fieldTransformationTraces.size());
+		System.out.println("Successful: " + fieldTransformationTraces.stream().filter(FieldTransformationTrace::isSuccess).count());
+		System.out.println("Failed: " + failedFieldTransformationTraces().size());
+
+		if (!failedFieldTransformationTraces().isEmpty()) {
+			System.out.println("\nFailures:");
+			for (FieldTransformationTrace trace : failedFieldTransformationTraces()) {
+				System.out.println("  [" + trace.getFieldId() + "] " + trace.getSourcePath());
+				System.out.println("    Error: " + trace.getErrorMessage());
+				if (trace.getExpression() != null) {
+					System.out.println("    Expression: " + trace.getExpression());
+				}
+				System.out.println("    Source value: " + trace.getSourceValue());
+			}
+		}
+	}
+	
+	@Override
+	public String toString() {
+	    return "{"
+	            + "\"traceId\":\"" + escape(traceId) + "\","
+	            + "\"source\":\"" + escape(source) + "\","
+	            + "\"target\":\"" + escape(target) + "\","
+	            + "\"mappingId\":\"" + escape(mappingId) + "\","
+	            + "\"success\":" + success + ","
+	            + "\"errorMessage\":\"" + escape(errorMessage) + "\","
+	            + "\"startTime\":" + startTime + ","
+	            + "\"endTime\":" + endTime + ","
+	            + "\"duration\":\"" + getDuration() + " millis\","
+	            + "\"fieldTransformationTraces\":" + listToJson(fieldTransformationTraces)
+	            + "}";
+	}
+
+	private String escape(String v) {
+	    if (v == null) return null;
+	    return v.replace("\"", "\\\"");
+	}
+
+	private String listToJson(List<?> list) {
+	    if (list == null) return "[]";
+	    StringBuilder sb = new StringBuilder("[");
+	    for (int i = 0; i < list.size(); i++) {
+	        sb.append(list.get(i).toString()); // each element already JSON
+	        if (i < list.size() - 1) sb.append(",");
+	    }
+	    sb.append("]");
+	    return sb.toString();
+	}
+
 
 }

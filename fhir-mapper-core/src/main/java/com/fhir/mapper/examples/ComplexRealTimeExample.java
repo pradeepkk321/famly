@@ -8,6 +8,7 @@ import com.fhir.mapper.model.MappingRegistry;
 import com.fhir.mapper.model.ResourceMapping;
 import com.fhir.mapper.model.TransformationContext;
 import com.fhir.mapper.model.TransformationTrace;
+import com.fhir.mapper.model.FieldTransformationTrace;
 
 public class ComplexRealTimeExample {
 	public static void main(String[] args) throws Exception {
@@ -29,7 +30,7 @@ public class ComplexRealTimeExample {
 		context.getSettings().put("mrnSystem", "urn:oid:2.16.840.1.113883.4.1");
 		
 		//Enable tracing
-		context.enableTracing();
+		context.enableTracing("123");
 
 		// Get mapping
 		ResourceMapping mapping = registry.findById("complex-patient-v1");
@@ -38,26 +39,24 @@ public class ComplexRealTimeExample {
 //		    Patient patient = engine.jsonToFhirResource(inputJSON(), mapping, context, Patient.class);
 		    String patientFhirJson = engine.jsonToFhirJson(inputJSON(), mapping, context);
 		    
-//			System.out.println("\n\n Patient JSON: \n " + patientFhirJson);		
+			System.out.println("\n\n Patient JSON: \n " + patientFhirJson);		
 			System.out.println("Output Validation Success: " + expectedOutput().equals(patientFhirJson));;
 		    
-		    // Review trace
-		    context.printTraceReport();
-		    
-		    // Export for analysis
-		    List<TransformationTrace> failures = context.getFailedTraces();
-		    
-		    System.out.println("\n=== Complete Trace Report ===");
-		    System.out.println("[");
-		    for (TransformationTrace transformationTrace : context.getTraces()) {
-		    	System.out.println(transformationTrace + ",");
-				
+			if(context.isEnableTracing()) {
+			    // Review trace
+			    TransformationTrace trace = context.getTrace();
+			    trace.printTraceReport();
+			    
+			    // Export for analysis
+			    List<FieldTransformationTrace> failures = trace.failedFieldTransformationTraces();
+			    
+			    System.out.println("\n=== Complete Trace Report ===");
+			    System.out.println(trace);
 			}
-		    System.out.println("]");
-		    
 		} catch (Exception e) {
 		    // Even on exception, trace is available
-		    context.printTraceReport();
+			if(context.isEnableTracing())
+				context.getTrace().printTraceReport();
 		    throw e;
 		}		
 	}
