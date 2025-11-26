@@ -883,7 +883,7 @@ Contributions are welcome! Please:
 ## Support
 
 For issues and questions:
-- GitHub Issues: [link]
+- GitHub Issues: [link](https://github.com/pradeepkk321/fhir-mapper/issues)
 - Documentation: [link]
 - Email: pradyskumar@gmail.com
 
