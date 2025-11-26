@@ -15,6 +15,8 @@ import com.fhir.mapper.model.MappingDirection;
 import com.fhir.mapper.model.MappingRegistry;
 import com.fhir.mapper.model.ResourceMapping;
 import com.fhir.mapper.model.TransformationContext;
+import com.fhir.mapper.model.TransformationTrace;
+import com.fhir.mapper.model.FieldTransformationTrace;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
@@ -52,16 +54,27 @@ public class TransformationEngine {
      */
     public Map<String, Object> jsonToFhirMap(String jsonString, ResourceMapping mapping,
                                              TransformationContext context) throws Exception {
-        validateDirection(mapping, MappingDirection.JSON_TO_FHIR);
-        Map<String, Object> source = objectMapper.readValue(jsonString, Map.class);
-        return performTransformation(source, mapping, context);
+    	initTrace(mapping, context);   	
+        try {
+            validateDirection(mapping, MappingDirection.JSON_TO_FHIR);
+            Map<String, Object> source = objectMapper.readValue(jsonString, Map.class);
+            Map<String, Object> fhirMap = performTransformation(source, mapping, context);
+        	
+            updateSuccessTrace(context);
+            
+            return fhirMap;
+        	
+        } catch(Exception e) {
+        	updateFailureTrace(context);
+        	throw e;
+        }
     }
 
     /**
      * Transform JSON Map to FHIR Map
      */
     public Map<String, Object> jsonToFhirMap(Map<String, Object> jsonMap, ResourceMapping mapping,
-                                             TransformationContext context) throws Exception {
+                                             TransformationContext context) throws Exception {  
         validateDirection(mapping, MappingDirection.JSON_TO_FHIR);
         return performTransformation(jsonMap, mapping, context);
     }
@@ -79,18 +92,28 @@ public class TransformationEngine {
     /**
      * Transform JSON string to FHIR JSON string
      */
-    public String jsonToFhirJson(String jsonString, ResourceMapping mapping,
-                                 TransformationContext context) throws Exception {
-        Map<String, Object> fhirMap = jsonToFhirMap(jsonString, mapping, context);
-        return objectMapper.writeValueAsString(fhirMap);
-    }
+	public String jsonToFhirJson(String jsonString, ResourceMapping mapping, TransformationContext context)
+			throws Exception {
+		initTrace(mapping, context);
+		try {
+			Map<String, Object> fhirMap = jsonToFhirMap(jsonString, mapping, context);
+			String fhirJson = objectMapper.writeValueAsString(fhirMap);
+
+			updateSuccessTrace(context);
+			return fhirJson;
+
+		} catch (Exception e) {
+			updateFailureTrace(context);
+			throw e;
+		}
+	}
 
     /**
      * Transform JSON Map to FHIR JSON string
      */
     public String jsonToFhirJson(Map<String, Object> jsonMap, ResourceMapping mapping,
                                  TransformationContext context) throws Exception {
-        Map<String, Object> fhirMap = jsonToFhirMap(jsonMap, mapping, context);
+    	Map<String, Object> fhirMap = jsonToFhirMap(jsonMap, mapping, context);
         return objectMapper.writeValueAsString(fhirMap);
     }
 
@@ -99,7 +122,7 @@ public class TransformationEngine {
      */
     public String jsonToFhirJson(Object pojo, ResourceMapping mapping,
                                  TransformationContext context) throws Exception {
-        Map<String, Object> fhirMap = jsonToFhirMap(pojo, mapping, context);
+    	Map<String, Object> fhirMap = jsonToFhirMap(pojo, mapping, context);
         return objectMapper.writeValueAsString(fhirMap);
     }
 
@@ -109,7 +132,7 @@ public class TransformationEngine {
     public <T extends IBaseResource> T jsonToFhirResource(String jsonString, ResourceMapping mapping,
                                                           TransformationContext context,
                                                           Class<T> resourceClass) throws Exception {
-        String fhirJson = jsonToFhirJson(jsonString, mapping, context);
+    	String fhirJson = jsonToFhirJson(jsonString, mapping, context);
         IParser parser = fhirContext.newJsonParser();
         return parser.parseResource(resourceClass, fhirJson);
     }
@@ -121,7 +144,7 @@ public class TransformationEngine {
                                                           ResourceMapping mapping,
                                                           TransformationContext context,
                                                           Class<T> resourceClass) throws Exception {
-        String fhirJson = jsonToFhirJson(jsonMap, mapping, context);
+    	String fhirJson = jsonToFhirJson(jsonMap, mapping, context);
         IParser parser = fhirContext.newJsonParser();
         return parser.parseResource(resourceClass, fhirJson);
     }
@@ -132,7 +155,7 @@ public class TransformationEngine {
     public <T extends IBaseResource> T jsonToFhirResource(Object pojo, ResourceMapping mapping,
                                                           TransformationContext context,
                                                           Class<T> resourceClass) throws Exception {
-        String fhirJson = jsonToFhirJson(pojo, mapping, context);
+    	String fhirJson = jsonToFhirJson(pojo, mapping, context);
         IParser parser = fhirContext.newJsonParser();
         return parser.parseResource(resourceClass, fhirJson);
     }
@@ -146,7 +169,7 @@ public class TransformationEngine {
      */
     public Map<String, Object> fhirToJsonMap(String fhirJson, ResourceMapping mapping,
                                              TransformationContext context) throws Exception {
-        validateDirection(mapping, MappingDirection.FHIR_TO_JSON);
+    	validateDirection(mapping, MappingDirection.FHIR_TO_JSON);
         Map<String, Object> source = objectMapper.readValue(fhirJson, Map.class);
         return performTransformation(source, mapping, context);
     }
@@ -156,7 +179,7 @@ public class TransformationEngine {
      */
     public Map<String, Object> fhirToJsonMap(Map<String, Object> fhirMap, ResourceMapping mapping,
                                              TransformationContext context) throws Exception {
-        validateDirection(mapping, MappingDirection.FHIR_TO_JSON);
+    	validateDirection(mapping, MappingDirection.FHIR_TO_JSON);
         return performTransformation(fhirMap, mapping, context);
     }
 
@@ -165,7 +188,7 @@ public class TransformationEngine {
      */
     public Map<String, Object> fhirToJsonMap(IBaseResource resource, ResourceMapping mapping,
                                              TransformationContext context) throws Exception {
-        IParser parser = fhirContext.newJsonParser();
+    	IParser parser = fhirContext.newJsonParser();
         String fhirJson = parser.encodeResourceToString(resource);
         return fhirToJsonMap(fhirJson, mapping, context);
     }
@@ -175,7 +198,7 @@ public class TransformationEngine {
      */
     public String fhirToJsonString(String fhirJson, ResourceMapping mapping,
                                    TransformationContext context) throws Exception {
-        Map<String, Object> jsonMap = fhirToJsonMap(fhirJson, mapping, context);
+    	Map<String, Object> jsonMap = fhirToJsonMap(fhirJson, mapping, context);
         return objectMapper.writeValueAsString(jsonMap);
     }
 
@@ -184,7 +207,7 @@ public class TransformationEngine {
      */
     public String fhirToJsonString(Map<String, Object> fhirMap, ResourceMapping mapping,
                                    TransformationContext context) throws Exception {
-        Map<String, Object> jsonMap = fhirToJsonMap(fhirMap, mapping, context);
+    	Map<String, Object> jsonMap = fhirToJsonMap(fhirMap, mapping, context);
         return objectMapper.writeValueAsString(jsonMap);
     }
 
@@ -193,7 +216,7 @@ public class TransformationEngine {
      */
     public String fhirToJsonString(IBaseResource resource, ResourceMapping mapping,
                                    TransformationContext context) throws Exception {
-        Map<String, Object> jsonMap = fhirToJsonMap(resource, mapping, context);
+    	Map<String, Object> jsonMap = fhirToJsonMap(resource, mapping, context);
         return objectMapper.writeValueAsString(jsonMap);
     }
 
@@ -202,7 +225,7 @@ public class TransformationEngine {
      */
     public <T> T fhirToJsonObject(String fhirJson, ResourceMapping mapping,
                                   TransformationContext context, Class<T> targetClass) throws Exception {
-        Map<String, Object> jsonMap = fhirToJsonMap(fhirJson, mapping, context);
+    	Map<String, Object> jsonMap = fhirToJsonMap(fhirJson, mapping, context);
         return objectMapper.convertValue(jsonMap, targetClass);
     }
 
@@ -211,7 +234,7 @@ public class TransformationEngine {
      */
     public <T> T fhirToJsonObject(Map<String, Object> fhirMap, ResourceMapping mapping,
                                   TransformationContext context, Class<T> targetClass) throws Exception {
-        Map<String, Object> jsonMap = fhirToJsonMap(fhirMap, mapping, context);
+    	Map<String, Object> jsonMap = fhirToJsonMap(fhirMap, mapping, context);
         return objectMapper.convertValue(jsonMap, targetClass);
     }
 
@@ -220,7 +243,7 @@ public class TransformationEngine {
      */
     public <T> T fhirToJsonObject(IBaseResource resource, ResourceMapping mapping,
                                   TransformationContext context, Class<T> targetClass) throws Exception {
-        Map<String, Object> jsonMap = fhirToJsonMap(resource, mapping, context);
+    	Map<String, Object> jsonMap = fhirToJsonMap(resource, mapping, context);
         return objectMapper.convertValue(jsonMap, targetClass);
     }
 
@@ -245,7 +268,10 @@ public class TransformationEngine {
     private Map<String, Object> performTransformation(Map<String, Object> source,
                                                       ResourceMapping mapping,
                                                       TransformationContext context) throws Exception {
+    	
         Map<String, Object> target = new LinkedHashMap<>();
+        
+//        context.setMappingId(mapping.getId());
         
         // Set resourceType for FHIR output
         if (mapping.getDirection() == MappingDirection.JSON_TO_FHIR) {
@@ -266,63 +292,122 @@ public class TransformationEngine {
         return target;
     }
 
-    /**
+	/**
      * Process individual field mapping
      */
     private void processMapping(Map<String, Object> source, Map<String, Object> target, 
                                 FieldMapping mapping, TransformationContext context) {
-        // Check condition with context
-        if (mapping.getCondition() != null && 
-            !evaluateCondition(mapping.getCondition(), source, context)) {
-            return;
-        }
-
-        String sourcePath = mapping.getSourcePath();
-        String targetPath = mapping.getTargetPath();
-
-        Object value = null;
-
-        // Extract value from source if path exists
-        if (sourcePath != null) {
-            value = pathNavigator.getValue(source, sourcePath);
-        }
-
-        // Apply default value (supports context variables)
-        if (value == null && mapping.getDefaultValue() != null) {
-            value = resolveValue(mapping.getDefaultValue(), context);
-        }
-        
-        // Transform with context
-        if (mapping.getTransformExpression() != null) {
-            value = applyTransform(value, mapping.getTransformExpression(), source, context);
-        }
-
-        // Skip if still null and not required
-        if (value == null) {
-            if (mapping.isRequired()) {
-                throw new TransformationException("Required field missing: " + 
-                    (sourcePath != null ? sourcePath : mapping.getId()));
+    	
+        FieldTransformationTrace fieldTransformationTrace = initFieldTransformationTrace(mapping, context);
+        boolean enableTracing = context.isEnableTracing();
+    	
+    	try {
+    	     // Check condition with context
+    		if (mapping.getCondition() != null) {
+                boolean conditionResult = evaluateCondition(mapping.getCondition(), source, context);
+                if(enableTracing)
+                	fieldTransformationTrace.setConditionPassed(conditionResult);
+                
+                if (!conditionResult && enableTracing) {
+                    fieldTransformationTrace.setEndTime(System.currentTimeMillis());
+//                    context.addTrace(trace);
+                    context.getTrace().addFieldTransformationTrace(fieldTransformationTrace);
+                    return;
+                }
             }
-            return;
-        }
 
-        // Apply lookup if specified
-        if (mapping.getLookupTable() != null) {
-            value = applyLookupAndGetCode(value, mapping.getLookupTable());
-        }
+            String sourcePath = mapping.getSourcePath();
+            String targetPath = mapping.getTargetPath();
 
-        // Convert to proper type based on dataType
-        if (mapping.getDataType() != null) {
-            value = convertToType(value, mapping.getDataType());
-        }
+            Object value = null;
 
-        // Validate
-        if (mapping.getValidator() != null) {
-            validationEngine.validate(value, mapping.getValidator(), mapping.getId());
-        }
+            // Extract value from source if path exists
+            if (sourcePath != null) {
+                value = pathNavigator.getValue(source, sourcePath);
+                if(enableTracing)
+                	fieldTransformationTrace.setSourceValue(value);
+            }
 
-        // Set value in target
-        pathNavigator.setValue(target, targetPath, value);
+            // Apply default value (supports context variables)
+            if (value == null && mapping.getDefaultValue() != null) {
+                value = resolveValue(mapping.getDefaultValue(), context);
+            }
+            
+            // Transform with context
+            if (mapping.getTransformExpression() != null) {
+                try {
+                    value = applyTransform(value, mapping.getTransformExpression(), source, context);
+                } catch (Exception e) {
+                	if(enableTracing) {
+                        fieldTransformationTrace.setErrorMessage("Transform failed: " + e.getMessage());
+                        fieldTransformationTrace.setEndTime(System.currentTimeMillis());
+//                        context.addTrace(fieldTransformationTrace);
+                        context.getTrace().addFieldTransformationTrace(fieldTransformationTrace);                		
+                	}
+                    if (mapping.isRequired()) {
+                        throw new TransformationException(
+                            "Required field transformation failed: " + mapping.getId(), e);
+                    }
+                    return;
+                }
+            }
+
+            // Skip if still null and not required
+            if (value == null) {
+                if (mapping.isRequired()) {
+                	if(enableTracing) {
+                        fieldTransformationTrace.setErrorMessage("Required field is null after all transformations");
+                        fieldTransformationTrace.setEndTime(System.currentTimeMillis());
+//                        context.addTrace(fieldTransformationTrace);
+                        context.getTrace().addFieldTransformationTrace(fieldTransformationTrace);
+                	}
+                    throw new TransformationException("Required field missing: " + 
+                        (sourcePath != null ? sourcePath : mapping.getId()));
+                }
+                
+                if(enableTracing) {
+                    fieldTransformationTrace.setErrorMessage("Value is null (non-required)");
+                    fieldTransformationTrace.setEndTime(System.currentTimeMillis());
+//                    context.addTrace(fieldTransformationTrace);
+                    context.getTrace().addFieldTransformationTrace(fieldTransformationTrace);
+                }
+                return;
+            }
+
+            // Apply lookup if specified
+            if (mapping.getLookupTable() != null) {
+                value = applyLookupAndGetCode(value, mapping.getLookupTable());
+            }
+
+            // Convert to proper type based on dataType
+            if (mapping.getDataType() != null) {
+                value = convertToType(value, mapping.getDataType());
+            }
+
+            // Validate
+            if (mapping.getValidator() != null) {
+                validationEngine.validate(value, mapping.getValidator(), mapping.getId());
+            }
+
+            // Set value in target
+            pathNavigator.setValue(target, targetPath, value);
+            
+            if(enableTracing) {
+                fieldTransformationTrace.setResultValue(value);
+                fieldTransformationTrace.setEndTime(System.currentTimeMillis());
+//                context.addTrace(fieldTransformationTrace);
+                context.getTrace().addFieldTransformationTrace(fieldTransformationTrace);
+            }
+    		
+    	} catch (Exception e) {
+            if(enableTracing) {
+                fieldTransformationTrace.setErrorMessage(e.getMessage());
+                fieldTransformationTrace.setEndTime(System.currentTimeMillis());
+//                context.addTrace(fieldTransformationTrace);
+                context.getTrace().addFieldTransformationTrace(fieldTransformationTrace);
+            }
+            throw e;
+        }
     }
 
     /**
@@ -465,4 +550,44 @@ public class TransformationEngine {
         // No longer needed - context available directly in expressions
         return expression;
     }
+
+	private void initTrace(ResourceMapping mapping, TransformationContext context) {
+        if(context.isEnableTracing()) {
+    		TransformationTrace trace = context.getTrace();
+    		trace.setMappingId(mapping.getId());
+    		trace.setSource(mapping.getSourceType());
+    		trace.setTarget(mapping.getTargetType());
+    		trace.setStartTime(System.currentTimeMillis());	
+        }
+	}
+
+	private void updateFailureTrace(TransformationContext context) {
+		if(context.isEnableTracing()) {
+			TransformationTrace trace = context.getTrace();
+			trace.setEndTime(System.currentTimeMillis());
+			trace.setSuccess(false);
+		}
+	}
+
+	private void updateSuccessTrace(TransformationContext context) {
+		if(context.isEnableTracing()) {
+			TransformationTrace trace = context.getTrace();
+			trace.setEndTime(System.currentTimeMillis());
+			trace.setSuccess(true);
+		}
+	}
+
+	private FieldTransformationTrace initFieldTransformationTrace(FieldMapping mapping, TransformationContext context) {
+		if(context.isEnableTracing()) {
+			FieldTransformationTrace trace = new FieldTransformationTrace();
+		    trace.setFieldId(mapping.getId());
+		    trace.setSourcePath(mapping.getSourcePath());
+		    trace.setTargetPath(mapping.getTargetPath());
+		    trace.setExpression(mapping.getTransformExpression());
+		    trace.setCondition(mapping.getCondition());
+		    trace.setStartTime(System.currentTimeMillis());
+			return trace;
+		}
+		return null;
+	}
 }

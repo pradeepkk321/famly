@@ -98,6 +98,12 @@ public class MappingExpressionEvaluator {
             JexlExpression jexlExpr = getOrCompileExpression(expression);
             Object result = jexlExpr.evaluate(jexlContext);
             
+            // Log null results
+            if (result == null) {
+                logger.warn("Expression evaluated to null: '{}' with value: {}", 
+                    expression, value);
+            }
+            
 //            System.out.println("Result: " + result);
 //            System.out.println("Result type: " + (result != null ? result.getClass().getName() : "null"));
             
@@ -106,8 +112,9 @@ public class MappingExpressionEvaluator {
             return result;
             
         } catch (JexlException e) {
-            System.err.println("JexlException: " + e.getMessage());
-            e.printStackTrace();
+        	logger.error("Expression evaluation failed: '{}' - {}", expression, e.getMessage());
+//            System.err.println("JexlException: " + e.getMessage());
+//            e.printStackTrace();
             throw new ExpressionEvaluationException(
                 expression, 
                 "Failed to evaluate expression: " + e.getMessage(), 
