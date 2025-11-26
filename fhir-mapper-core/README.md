@@ -424,63 +424,6 @@ your-project/
 }
 ```
 
-## Advanced Usage
-
-### Batch Processing
-
-```java
-List<PatientDTO> patients = loadPatients();
-List<Patient> fhirPatients = new ArrayList<>();
-
-ResourceMapping mapping = registry.findBySourceAndDirection(
-    "PatientDTO", MappingDirection.JSON_TO_FHIR
-);
-
-for (PatientDTO dto : patients) {
-    try {
-        Patient patient = engine.jsonToFhirResource(
-            dto, mapping, context, Patient.class
-        );
-        fhirPatients.add(patient);
-    } catch (Exception e) {
-        logger.error("Failed to transform patient {}: {}", 
-            dto.getPatientId(), e.getMessage());
-    }
-}
-```
-
-### Hot Reload
-
-```java
-// Initial load
-MappingRegistry registry = loader.loadAll();
-
-// Later, reload without restarting
-loader.reload(registry);
-```
-
-### Custom FHIR Version
-
-```java
-// Use R5 instead of R4
-FhirContext fhirContext = FhirContext.forR5();
-MappingLoader loader = new MappingLoader("./mappings", true, fhirContext);
-TransformationEngine engine = new TransformationEngine(registry, fhirContext);
-```
-
-### Dry-Run Validation
-
-```java
-// Validate mappings without loading
-ValidationResult result = loader.validateOnly();
-
-if (!result.isValid()) {
-    for (ValidationError error : result.getErrors()) {
-        System.err.println(error.getContext() + ": " + error.getMessage());
-    }
-}
-```
-
 ## REST API Integration Example
 
 ```java
@@ -782,6 +725,64 @@ The framework automatically scans expressions for dangerous patterns:
 **MEDIUM/LOW Issues** (warnings):
 - File I/O (`File`, `FileInputStream`)
 - Threading (`new Thread()`)
+
+
+## Advanced Usage
+
+### Batch Processing
+
+```java
+List<PatientDTO> patients = loadPatients();
+List<Patient> fhirPatients = new ArrayList<>();
+
+ResourceMapping mapping = registry.findBySourceAndDirection(
+    "PatientDTO", MappingDirection.JSON_TO_FHIR
+);
+
+for (PatientDTO dto : patients) {
+    try {
+        Patient patient = engine.jsonToFhirResource(
+            dto, mapping, context, Patient.class
+        );
+        fhirPatients.add(patient);
+    } catch (Exception e) {
+        logger.error("Failed to transform patient {}: {}", 
+            dto.getPatientId(), e.getMessage());
+    }
+}
+```
+
+### Hot Reload
+
+```java
+// Initial load
+MappingRegistry registry = loader.loadAll();
+
+// Later, reload without restarting
+loader.reload(registry);
+```
+
+### Custom FHIR Version
+
+```java
+// Use R5 instead of R4
+FhirContext fhirContext = FhirContext.forR5();
+MappingLoader loader = new MappingLoader("./mappings", true, fhirContext);
+TransformationEngine engine = new TransformationEngine(registry, fhirContext);
+```
+
+### Dry-Run Validation
+
+```java
+// Validate mappings without loading
+ValidationResult result = loader.validateOnly();
+
+if (!result.isValid()) {
+    for (ValidationError error : result.getErrors()) {
+        System.err.println(error.getContext() + ": " + error.getMessage());
+    }
+}
+```
 
 ## Limitations
 
