@@ -1,6 +1,6 @@
 # FHIR Mapper Core
 
-A declarative, JSON-driven transformation framework for converting between custom JSON/POJO formats and HL7 FHIR resources.
+A declarative, Excel/JSON-driven transformation framework for converting between custom JSON/POJO formats and HL7 FHIR resources.
 
 [![Maven](https://img.shields.io/badge/Maven-3.8+-blue.svg)](https://maven.apache.org/)
 [![Java](https://img.shields.io/badge/Java-17+-orange.svg)](https://www.oracle.com/java/)
