@@ -116,6 +116,25 @@ Row 10: O         | other      | http://custom.org/special-gender-system   | Oth
 
 Note: `targetSystem` in row 8+ is optional. If blank, uses `Default Target System` from row 4.
 
+**Excel Mapping Format:**
+```
+Sheet: "Patient - JSON to FHIR"
+
+Row 1: ID:            | patient-json-to-fhir-v1
+Row 2: Direction:     | JSON_TO_FHIR
+Row 3: Source Type:   | PatientDTO
+Row 4: Target Type:   | Patient
+Row 5: (blank)
+Row 6: id           | sourcePath | targetPath           | dataType | transformExpression        | condition              | required | defaultValue              | lookupTable    | description
+Row 7: patient-id   | patientId  | identifier[0].value  | string   |                            |                        | TRUE     |                           |                | Patient MRN
+Row 8: patient-sys  |            | identifier[0].system | uri      |                            |                        | TRUE     | $ctx.settings['mrnSystem']|                | MRN system
+Row 9: patient-name | firstName  | name[0].given[0]     | string   |                            |                        | TRUE     |                           |                | First name
+Row 10: patient-ssn | ssn        | identifier[1].value  | string   | fn.replace(value, '-', '') | ssn != null            | FALSE    |                           |                | SSN no dashes
+Row 11: patient-gen | gender     | gender               | code     |                            |                        | TRUE     |                           | gender-lookup  | Gender code
+```
+
+**Multiple sheets = Multiple mappings** in one workbook.
+
 **All Excel files are scanned:**
 - `mappings/excel/*.xlsx` → Resource mappings
 - `mappings/lookups-excel/*.xlsx` → Lookup tables
@@ -501,6 +520,215 @@ public class FhirTransformController {
         ctx.setOrganizationId(getCurrentOrganizationId());
         ctx.getSettings().put("identifierSystem", getIdentifierSystem());
         return ctx;
+    }
+}
+```
+## Transformation Tracing
+
+Track field-level transformation details for debugging and monitoring.
+
+### Enable Tracing
+```java
+TransformationContext context = new TransformationContext();
+context.setOrganizationId("org-123");
+
+// Enable tracing with random UUID
+context.enableTracing();
+
+// OR with custom trace ID
+context.enableTracing("trace-12345");
+```
+
+### Basic Usage
+```java
+ResourceMapping mapping = registry.findById("patient-json-to-fhir-v1");
+
+try {
+    Patient patient = engine.jsonToFhirResource(json, mapping, context, Patient.class);
+    
+    if (context.isEnableTracing()) {
+        TransformationTrace trace = context.getTrace();
+        
+        // Print summary report
+        trace.printTraceReport();
+        
+        // Get failed fields
+        List<FieldTransformationTrace> failures = trace.failedFieldTransformationTraces();
+        
+        // Export as JSON
+        System.out.println(trace.toString());
+    }
+    
+} catch (Exception e) {
+    // Trace available even on exception
+    if (context.isEnableTracing()) {
+        context.getTrace().printTraceReport();
+    }
+    throw e;
+}
+```
+
+### Trace Report Output
+```
+=== Transformation Trace Report ===
+Trace ID: abc-123-def-456
+Mapping: PatientDTO → Patient (patient-json-to-fhir-v1)
+Status: SUCCESS
+Duration: 45ms
+Total fields: 25
+Successful: 23
+Failed: 2
+
+Failures:
+  [patient-ssn] ssn
+    Error: Required field is null after all transformations
+    Source value: null
+
+  [patient-middle-name] middleName
+    Error: Transform failed: Expression evaluation error
+    Expression: fn.uppercase(value)
+    Source value: null
+```
+
+### JSON Trace Export
+```java
+// Get JSON representation
+String traceJson = trace.toString();
+
+// Save to file for analysis
+String filename = "traces/" + trace.getTraceId() + ".json";
+Files.write(Paths.get(filename), traceJson.getBytes());
+```
+
+**JSON Structure:**
+```json
+{
+  "traceId": "abc-123-def-456",
+  "source": "PatientDTO",
+  "target": "Patient",
+  "mappingId": "patient-json-to-fhir-v1",
+  "success": true,
+  "startTime": 1701234567890,
+  "endTime": 1701234567935,
+  "fieldTransformationTraces": [
+    {
+      "fieldId": "patient-id",
+      "sourcePath": "patientId",
+      "targetPath": "identifier[0].value",
+      "sourceValue": "P123",
+      "resultValue": "P123",
+      "expression": null,
+      "condition": null,
+      "conditionPassed": false,
+      "errorMessage": null,
+      "startTime": 1701234567891,
+      "endTime": 1701234567892
+    }
+  ]
+}
+```
+
+### Analyze Specific Issues
+```java
+TransformationTrace trace = context.getTrace();
+
+// Find null resolutions
+List<FieldTransformationTrace> nullFields = trace.getFieldTransformationTraces().stream()
+    .filter(f -> f.getSourceValue() == null)
+    .collect(Collectors.toList());
+
+// Find slow transformations (>10ms)
+List<FieldTransformationTrace> slowFields = trace.getFieldTransformationTraces().stream()
+    .filter(f -> f.getDuration() > 10)
+    .collect(Collectors.toList());
+
+// Find failed conditions
+List<FieldTransformationTrace> failedConditions = trace.getFieldTransformationTraces().stream()
+    .filter(f -> f.getCondition() != null && !f.isConditionPassed())
+    .collect(Collectors.toList());
+
+// Find transformation errors
+List<FieldTransformationTrace> transformErrors = trace.getFieldTransformationTraces().stream()
+    .filter(f -> f.getExpression() != null && f.getErrorMessage() != null)
+    .collect(Collectors.toList());
+```
+
+### Production Usage
+
+Tracing adds ~5-10% overhead. Enable selectively:
+```java
+// Only for specific patients
+if (patientId.equals("debug-patient-123")) {
+    context.enableTracing(patientId);
+}
+
+// Only in development
+if (environment.equals("dev") || environment.equals("staging")) {
+    context.enableTracing();
+}
+
+// For error investigation
+try {
+    Patient patient = engine.jsonToFhirResource(json, mapping, context, Patient.class);
+} catch (TransformationException e) {
+    // Enable tracing and retry for debugging
+    context.enableTracing("error-investigation-" + System.currentTimeMillis());
+    Patient patient = engine.jsonToFhirResource(json, mapping, context, Patient.class);
+    context.getTrace().printTraceReport();
+}
+```
+
+### REST API Integration
+```java
+@PostMapping("/transform/patient")
+public ResponseEntity<PatientResponse> transform(
+        @RequestBody PatientDTO dto,
+        @RequestHeader(value = "X-Enable-Trace", required = false) String enableTrace) {
+    
+    TransformationContext context = buildContext();
+    
+    // Enable tracing if requested
+    if ("true".equals(enableTrace)) {
+        String traceId = UUID.randomUUID().toString();
+        context.enableTracing(traceId);
+    }
+    
+    Patient patient = engine.jsonToFhirResource(dto, mapping, context, Patient.class);
+    
+    PatientResponse response = new PatientResponse(patient);
+    
+    // Include trace in response if enabled
+    if (context.isEnableTracing()) {
+        response.setTrace(context.getTrace());
+    }
+    
+    return ResponseEntity.ok(response);
+}
+```
+
+### Field-Level Details
+
+Access individual field transformation details:
+```java
+for (FieldTransformationTrace field : trace.getFieldTransformationTraces()) {
+    System.out.println("Field: " + field.getFieldId());
+    System.out.println("  Source path: " + field.getSourcePath());
+    System.out.println("  Target path: " + field.getTargetPath());
+    System.out.println("  Source value: " + field.getSourceValue());
+    System.out.println("  Result value: " + field.getResultValue());
+    System.out.println("  Duration: " + field.getDuration() + "ms");
+    
+    if (field.getExpression() != null) {
+        System.out.println("  Expression: " + field.getExpression());
+    }
+    
+    if (field.getCondition() != null) {
+        System.out.println("  Condition: " + field.getCondition());
+        System.out.println("  Condition passed: " + field.isConditionPassed());
+    }
+    
+    if (field.getErrorMessage() != null) {
+        System.out.println("  ERROR: " + field.getErrorMessage());
     }
 }
 ```
