@@ -4,16 +4,53 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Captures complete transformation execution details for a single mapping operation.
+ * Provides field-level tracing, error tracking, and performance metrics.
+ * 
+ * Usage:
+ * <pre>
+ * TransformationContext context = new TransformationContext();
+ * context.enableTracing("trace-123");
+ * 
+ * Patient patient = engine.jsonToFhirResource(json, mapping, context, Patient.class);
+ * TransformationTrace trace = context.getTrace();
+ * 
+ * System.out.println("Success: " + trace.isSuccess());
+ * System.out.println("Duration: " + trace.getDuration() + "ms");
+ * trace.printTraceReport();
+ * </pre>
+ * 
+ * @see FieldTransformationTrace
+ * @see TransformationContext#enableTracing()
+ */
 public class TransformationTrace {
 
-	private String traceId;
-	private String source;
-	private String target;
-	private String mappingId;
-	private boolean success;
-	private String errorMessage;
-	private long startTime;
-	private long endTime;
+    /** Unique identifier for this trace (UUID or custom) */
+    private String traceId;
+    
+    /** Source type name (e.g., "PatientDTO", "Patient") */
+    private String source;
+    
+    /** Target type name (e.g., "Patient", "PatientDTO") */
+    private String target;
+    
+    /** Mapping ID used for transformation */
+    private String mappingId;
+    
+    /** Whether transformation completed successfully */
+    private boolean success;
+    
+    /** Error message if transformation failed, null otherwise */
+    private String errorMessage;
+    
+    /** Timestamp when transformation started (milliseconds since epoch) */
+    private long startTime;
+    
+    /** Timestamp when transformation completed (milliseconds since epoch) */
+    private long endTime;
+    
+    /** Field-level transformation traces, one per field mapping */
 	private List<FieldTransformationTrace> fieldTransformationTraces = new ArrayList<>();
 
 	public TransformationTrace(String traceId) {
@@ -96,14 +133,26 @@ public class TransformationTrace {
 		fieldTransformationTraces.add(trace);
 	}
 
+    /**
+     * Get list of failed field transformations.
+     * @return List of fields with error messages
+     */
 	public List<FieldTransformationTrace> failedFieldTransformationTraces() {
 		return fieldTransformationTraces.stream().filter(t -> !t.isSuccess()).collect(Collectors.toList());
 	}
     
+    /**
+     * Get transformation duration in milliseconds.
+     * @return Duration or 0 if not completed
+     */
     public long getDuration() {
         return endTime - startTime;
     }
 
+    /**
+     * Print human-readable trace report to console.
+     * Includes summary statistics and detailed failure information.
+     */
 	public void printTraceReport() {
 		System.out.println("\n=== Transformation Trace Report ===");
 		System.out.println("Trace ID: " + traceId);
@@ -129,6 +178,10 @@ public class TransformationTrace {
 		}
 	}
 	
+    /**
+     * Returns JSON representation of complete trace for export/analysis.
+     * @return JSON string with trace data
+     */
 	@Override
 	public String toString() {
 	    return "{"

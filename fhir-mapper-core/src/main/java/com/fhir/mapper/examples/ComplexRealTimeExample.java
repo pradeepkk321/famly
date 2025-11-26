@@ -2,13 +2,15 @@ package com.fhir.mapper.examples;
 
 import java.util.List;
 
+import org.hl7.fhir.r4.model.Patient;
+
 import com.fhir.mapper.engine.TransformationEngine;
 import com.fhir.mapper.loader.MappingLoader;
+import com.fhir.mapper.model.FieldTransformationTrace;
 import com.fhir.mapper.model.MappingRegistry;
 import com.fhir.mapper.model.ResourceMapping;
 import com.fhir.mapper.model.TransformationContext;
 import com.fhir.mapper.model.TransformationTrace;
-import com.fhir.mapper.model.FieldTransformationTrace;
 
 public class ComplexRealTimeExample {
 	public static void main(String[] args) throws Exception {
@@ -30,7 +32,7 @@ public class ComplexRealTimeExample {
 		context.getSettings().put("mrnSystem", "urn:oid:2.16.840.1.113883.4.1");
 		
 		//Enable tracing
-		context.enableTracing("123");
+//		context.enableTracing();
 
 		// Get mapping
 		ResourceMapping mapping = registry.findById("complex-patient-v1");
@@ -51,6 +53,42 @@ public class ComplexRealTimeExample {
 			    List<FieldTransformationTrace> failures = trace.failedFieldTransformationTraces();
 			    
 			    System.out.println("\n=== Complete Trace Report ===");
+			    System.out.println(trace);
+			}
+		} catch (Exception e) {
+		    // Even on exception, trace is available
+			if(context.isEnableTracing())
+				context.getTrace().printTraceReport();
+		    throw e;
+		}		
+	}
+	
+	private static void testTrace(MappingRegistry registry) throws Exception {
+		TransformationEngine engine = new TransformationEngine(registry);
+
+		// Setup context
+		TransformationContext context = new TransformationContext();
+		context.setOrganizationId("org-123");
+		context.getSettings().put("mrnSystem", "urn:oid:2.16.840.1.113883.4.1");
+		
+		//Enable tracing
+		context.enableTracing();
+
+		// Get mapping
+		ResourceMapping mapping = registry.findById("complex-patient-v1");
+		
+		try {
+		    Patient patient = engine.jsonToFhirResource(inputJSON(), mapping, context, Patient.class);
+		   
+			if(context.isEnableTracing()) {
+			    // Review trace
+			    TransformationTrace trace = context.getTrace();
+			    trace.printTraceReport();
+			    
+			    // Export for analysis
+			    List<FieldTransformationTrace> failures = trace.failedFieldTransformationTraces();
+			    
+			    System.out.println("\n=== Complete Trace Report In JSON ===");
 			    System.out.println(trace);
 			}
 		} catch (Exception e) {

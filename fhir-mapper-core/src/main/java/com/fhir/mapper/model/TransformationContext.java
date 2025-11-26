@@ -60,7 +60,6 @@ public class TransformationContext {
 	public void enableTracing() {
 		this.enableTracing = true;
 		this.trace = new TransformationTrace(UUID.randomUUID().toString());
-//		this.traceId = UUID.randomUUID().toString();
 	}
 
 	/**
@@ -70,7 +69,6 @@ public class TransformationContext {
 	public void enableTracing(String traceId) {
 		this.enableTracing = true;
 		this.trace = new TransformationTrace(traceId);
-//		this.traceId = traceId;
 	}
 	
 	public TransformationTrace getTrace() {
