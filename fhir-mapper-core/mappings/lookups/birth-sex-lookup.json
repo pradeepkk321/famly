@@ -2,7 +2,7 @@
 	"id": "birth-sex-lookup",
 	"name": "Birth Sex Lookup",
 	"sourceSystem": "internal",
-	"targetSystem": "http://hl7.org/fhir/us/core/ValueSet/birthsex",
+	"defaultTargetSystem": "http://hl7.org/fhir/us/core/ValueSet/birthsex",
 	"bidirectional": false,
 	"mappings": [
 		{

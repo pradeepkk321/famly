@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fhir.mapper.expression.ExpressionEvaluationException;
 import com.fhir.mapper.expression.MappingExpressionEvaluator;
 import com.fhir.mapper.model.CodeLookupTable;
+import com.fhir.mapper.model.CodeMappingResult;
 import com.fhir.mapper.model.FieldMapping;
 import com.fhir.mapper.model.MappingDirection;
 import com.fhir.mapper.model.MappingRegistry;
@@ -307,7 +308,7 @@ public class TransformationEngine {
 
         // Apply lookup if specified
         if (mapping.getLookupTable() != null) {
-            value = applyLookup(value, mapping.getLookupTable());
+            value = applyLookupAndGetCode(value, mapping.getLookupTable());
         }
 
         // Convert to proper type based on dataType
@@ -382,7 +383,7 @@ public class TransformationEngine {
     /**
      * Apply code lookup (supports bidirectional)
      */
-    private Object applyLookup(Object value, String lookupTableId) {
+    private Object applyLookupOld(Object value, String lookupTableId) {
         if (value == null) return null;
 
         CodeLookupTable lookupTable = mappingRegistry.getLookupTable(lookupTableId);
@@ -398,6 +399,36 @@ public class TransformationEngine {
                 "No mapping found for code '" + code + "' in lookup: " + lookupTableId);
         }
         
+        return result;
+    }
+    
+    private Object applyLookupAndGetCode(Object value, String lookupTableId) {
+        CodeMappingResult result = applyLookup(value, lookupTableId);
+        return result.getCode();
+    }
+    
+    private Object applyLookupAndGetSystem(Object value, String lookupTableId) {
+        CodeMappingResult result = applyLookup(value, lookupTableId);
+        return result.getSystem();
+    }
+    
+    private CodeMappingResult applyLookup(Object value, String lookupTableId) {
+        if (value == null) return null;
+        
+        CodeLookupTable lookupTable = mappingRegistry.getLookupTable(lookupTableId);
+        if (lookupTable == null) {
+            throw new TransformationException("Lookup table not found: " + lookupTableId);
+        }
+        
+        String code = value.toString();
+        
+        // Use new method that returns system info
+        CodeMappingResult result = lookupTable.lookupTargetWithSystem(code);
+        
+        if (result == null) {
+            throw new TransformationException(
+                "No mapping found for code '" + code + "' in lookup: " + lookupTableId);
+        }
         return result;
     }
 

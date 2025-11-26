@@ -6,13 +6,15 @@ package com.fhir.mapper.model;
 public class CodeMapping {
     private String sourceCode;
     private String targetCode;
+    private String targetSystem;  // NEW - per-mapping system
     private String display;
 
     public CodeMapping() {}
 
-    public CodeMapping(String sourceCode, String targetCode, String display) {
+    public CodeMapping(String sourceCode, String targetCode, String targetSystem, String display) {
         this.sourceCode = sourceCode;
         this.targetCode = targetCode;
+        this.targetSystem = targetSystem;
         this.display = display;
     }
 
@@ -22,6 +24,9 @@ public class CodeMapping {
     public String getTargetCode() { return targetCode; }
     public void setTargetCode(String targetCode) { this.targetCode = targetCode; }
 
+    public String getTargetSystem() { return targetSystem; }
+    public void setTargetSystem(String targetSystem) { this.targetSystem = targetSystem; }
+
     public String getDisplay() { return display; }
     public void setDisplay(String display) { this.display = display; }
     
@@ -30,6 +35,7 @@ public class CodeMapping {
         return "CodeMapping{" +
             "sourceCode='" + sourceCode + '\'' +
             ", targetCode='" + targetCode + '\'' +
+            ", targetSystem='" + targetSystem + '\'' +
             ", display='" + display + '\'' +
             '}';
     }

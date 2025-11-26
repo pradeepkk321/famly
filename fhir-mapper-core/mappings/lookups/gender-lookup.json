@@ -2,7 +2,7 @@
 	"id": "gender-lookup",
 	"name": "Gender Code Mapping (Internal to FHIR)",
 	"sourceSystem": "internal",
-	"targetSystem": "http://hl7.org/fhir/administrative-gender",
+	"defaultTargetSystem": "http://hl7.org/fhir/administrative-gender",
 	"bidirectional": false,
 	"mappings": [
 		{

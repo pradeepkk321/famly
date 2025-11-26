@@ -2,7 +2,7 @@
 	"id": "ethnicity-text-lookup",
 	"name": "Ethnicity Text Display Lookup",
 	"sourceSystem": "urn:oid:2.16.840.1.113883.6.238",
-	"targetSystem": "text",
+	"defaultTargetSystem": "text",
 	"bidirectional": false,
 	"mappings": [
 		{
