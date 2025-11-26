@@ -46,10 +46,7 @@ context.setOrganizationId("org-123");
 context.getSettings().put("identifierSystem", "urn:oid:2.16.840.1.113883.4.1");
 
 // 4. Get mapping
-ResourceMapping mapping = registry.findBySourceAndDirection(
-    "PatientDTO", 
-    MappingDirection.JSON_TO_FHIR
-);
+ResourceMapping mapping = registry.findById("patient-json-to-fhir-v1");
 
 // 5. Transform!
 String jsonInput = "{\"patientId\":\"P123\",\"firstName\":\"John\",\"lastName\":\"Doe\",\"gender\":\"M\"}";
