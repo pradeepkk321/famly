@@ -15,6 +15,7 @@ import com.fhir.mapper.model.MappingDirection;
 import com.fhir.mapper.model.MappingRegistry;
 import com.fhir.mapper.model.ResourceMapping;
 import com.fhir.mapper.model.TransformationContext;
+import com.fhir.mapper.model.TransformationTrace;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
@@ -247,6 +248,8 @@ public class TransformationEngine {
                                                       TransformationContext context) throws Exception {
         Map<String, Object> target = new LinkedHashMap<>();
         
+        context.setMappingId(mapping.getId());
+        
         // Set resourceType for FHIR output
         if (mapping.getDirection() == MappingDirection.JSON_TO_FHIR) {
             target.put("resourceType", mapping.getTargetType());
@@ -271,58 +274,108 @@ public class TransformationEngine {
      */
     private void processMapping(Map<String, Object> source, Map<String, Object> target, 
                                 FieldMapping mapping, TransformationContext context) {
-        // Check condition with context
-        if (mapping.getCondition() != null && 
-            !evaluateCondition(mapping.getCondition(), source, context)) {
-            return;
-        }
-
-        String sourcePath = mapping.getSourcePath();
-        String targetPath = mapping.getTargetPath();
-
-        Object value = null;
-
-        // Extract value from source if path exists
-        if (sourcePath != null) {
-            value = pathNavigator.getValue(source, sourcePath);
-        }
-
-        // Apply default value (supports context variables)
-        if (value == null && mapping.getDefaultValue() != null) {
-            value = resolveValue(mapping.getDefaultValue(), context);
-        }
-        
-        // Transform with context
-        if (mapping.getTransformExpression() != null) {
-            value = applyTransform(value, mapping.getTransformExpression(), source, context);
-        }
-
-        // Skip if still null and not required
-        if (value == null) {
-            if (mapping.isRequired()) {
-                throw new TransformationException("Required field missing: " + 
-                    (sourcePath != null ? sourcePath : mapping.getId()));
+    	
+        TransformationTrace trace = new TransformationTrace();
+        trace.setMappingId(context.getMappingId()); // Set in performTransformation
+        trace.setFieldId(mapping.getId());
+        trace.setSourcePath(mapping.getSourcePath());
+        trace.setTargetPath(mapping.getTargetPath());
+        trace.setExpression(mapping.getTransformExpression());
+        trace.setCondition(mapping.getCondition());
+        trace.setStartTime(System.currentTimeMillis());
+    	
+    	try {
+    	     // Check condition with context
+    		if (mapping.getCondition() != null) {
+                boolean conditionResult = evaluateCondition(mapping.getCondition(), source, context);
+                trace.setConditionPassed(conditionResult);
+                
+                if (!conditionResult) {
+                    trace.setEndTime(System.currentTimeMillis());
+                    context.addTrace(trace);
+                    return;
+                }
             }
-            return;
-        }
 
-        // Apply lookup if specified
-        if (mapping.getLookupTable() != null) {
-            value = applyLookupAndGetCode(value, mapping.getLookupTable());
-        }
+            String sourcePath = mapping.getSourcePath();
+            String targetPath = mapping.getTargetPath();
 
-        // Convert to proper type based on dataType
-        if (mapping.getDataType() != null) {
-            value = convertToType(value, mapping.getDataType());
-        }
+            Object value = null;
 
-        // Validate
-        if (mapping.getValidator() != null) {
-            validationEngine.validate(value, mapping.getValidator(), mapping.getId());
-        }
+            // Extract value from source if path exists
+            if (sourcePath != null) {
+                value = pathNavigator.getValue(source, sourcePath);
+                trace.setSourceValue(value);
+            }
 
-        // Set value in target
-        pathNavigator.setValue(target, targetPath, value);
+            // Apply default value (supports context variables)
+            if (value == null && mapping.getDefaultValue() != null) {
+                value = resolveValue(mapping.getDefaultValue(), context);
+            }
+            
+            // Transform with context
+            if (mapping.getTransformExpression() != null) {
+                try {
+                    value = applyTransform(value, mapping.getTransformExpression(), source, context);
+                } catch (Exception e) {
+                    trace.setErrorMessage("Transform failed: " + e.getMessage());
+                    trace.setEndTime(System.currentTimeMillis());
+                    context.addTrace(trace);
+                    
+                    if (mapping.isRequired()) {
+                        throw new TransformationException(
+                            "Required field transformation failed: " + mapping.getId(), e);
+                    }
+                    return;
+                }
+            }
+
+            // Skip if still null and not required
+            if (value == null) {
+                if (mapping.isRequired()) {
+                    trace.setErrorMessage("Required field is null after all transformations");
+                    trace.setEndTime(System.currentTimeMillis());
+                    context.addTrace(trace);
+                    
+                    throw new TransformationException("Required field missing: " + 
+                        (sourcePath != null ? sourcePath : mapping.getId()));
+                }
+                
+                trace.setErrorMessage("Value is null (non-required)");
+                trace.setEndTime(System.currentTimeMillis());
+                context.addTrace(trace);
+                return;
+            }
+
+            // Apply lookup if specified
+            if (mapping.getLookupTable() != null) {
+                value = applyLookupAndGetCode(value, mapping.getLookupTable());
+            }
+
+            // Convert to proper type based on dataType
+            if (mapping.getDataType() != null) {
+                value = convertToType(value, mapping.getDataType());
+            }
+
+            // Validate
+            if (mapping.getValidator() != null) {
+                validationEngine.validate(value, mapping.getValidator(), mapping.getId());
+            }
+
+            // Set value in target
+            pathNavigator.setValue(target, targetPath, value);
+            
+            trace.setResultValue(value);
+            trace.setEndTime(System.currentTimeMillis());
+            context.addTrace(trace);
+    		
+    	} catch (Exception e) {
+            trace.setErrorMessage(e.getMessage());
+            trace.setEndTime(System.currentTimeMillis());
+            context.addTrace(trace);
+            throw e;
+        }
+   
     }
 
     /**

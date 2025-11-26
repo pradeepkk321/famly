@@ -1,20 +1,65 @@
 package com.fhir.mapper.examples;
 
-import org.hl7.fhir.r4.model.Patient;
+import java.util.List;
 
 import com.fhir.mapper.engine.TransformationEngine;
 import com.fhir.mapper.loader.MappingLoader;
-import com.fhir.mapper.model.MappingDirection;
 import com.fhir.mapper.model.MappingRegistry;
 import com.fhir.mapper.model.ResourceMapping;
 import com.fhir.mapper.model.TransformationContext;
+import com.fhir.mapper.model.TransformationTrace;
 
 public class ComplexRealTimeExample {
 	public static void main(String[] args) throws Exception {
 		// Load mappings
 		MappingLoader loader = new MappingLoader("./mappings");
 		MappingRegistry registry = loader.loadAll();
-		testPatientTransformation(registry);
+		
+//		testPatientTransformation(registry);
+		testPatientTransformationWithTrace(registry);
+		
+	}
+	
+	private static void testPatientTransformationWithTrace(MappingRegistry registry) throws Exception {
+		TransformationEngine engine = new TransformationEngine(registry);
+
+		// Setup context
+		TransformationContext context = new TransformationContext();
+		context.setOrganizationId("org-123");
+		context.getSettings().put("mrnSystem", "urn:oid:2.16.840.1.113883.4.1");
+		
+		//Enable tracing
+		context.enableTracing();
+
+		// Get mapping
+		ResourceMapping mapping = registry.findById("complex-patient-v1");
+		
+		try {
+//		    Patient patient = engine.jsonToFhirResource(inputJSON(), mapping, context, Patient.class);
+		    String patientFhirJson = engine.jsonToFhirJson(inputJSON(), mapping, context);
+		    
+//			System.out.println("\n\n Patient JSON: \n " + patientFhirJson);		
+			System.out.println("Output Validation Success: " + expectedOutput().equals(patientFhirJson));;
+		    
+		    // Review trace
+		    context.printTraceReport();
+		    
+		    // Export for analysis
+		    List<TransformationTrace> failures = context.getFailedTraces();
+		    
+		    System.out.println("\n=== Complete Trace Report ===");
+		    System.out.println("[");
+		    for (TransformationTrace transformationTrace : context.getTraces()) {
+		    	System.out.println(transformationTrace + ",");
+				
+			}
+		    System.out.println("]");
+		    
+		} catch (Exception e) {
+		    // Even on exception, trace is available
+		    context.printTraceReport();
+		    throw e;
+		}		
 	}
 
 	private static void testPatientTransformation(MappingRegistry registry) throws Exception {
