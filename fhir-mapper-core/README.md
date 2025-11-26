@@ -327,7 +327,7 @@ MappingRegistry registry = loader.loadAll(); // Throws if validation fails
 ```
 ### 8. Transformation Tracing
 
-Optionally logs a lightweight trace of the transformation process, helping you understand how each field was mapped. When enabled, the engine generates a small JSON summary containing the trace ID, mapping used, overall status, and basic per-field results. More details are available in the [Transformation Tracing](#transformation-tracing) section.
+Optionally logs a lightweight trace of the transformation process, helping you understand how each field was mapped. When enabled, the engine generates a small JSON summary containing the trace ID, mapping used, overall status, and basic per-field results. More details are available in the [Transformation Tracing](https://github.com/pradeepkk321/fhir-mapper/wiki/Transformation-Tracing) section.
 
 **Enable:**
 ```java
