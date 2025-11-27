@@ -1227,10 +1227,9 @@ java -jar fhir-mapper-cli.jar validate ./mappings
 
 ### Current Limitations
 
-1. **Path Validation**: Only first-level fields validated against FHIR structure
-2. **Array Wildcards**: Cannot map "all elements" automatically (e.g., `addresses[*]`)
-3. **FHIRPath Queries**: Does not support complex FHIRPath (e.g., `name.where(use='official')`)
-4. **Circular References**: Not detected or handled
+1. **Array Wildcards**: Cannot map "all elements" automatically (e.g., `addresses[*]`)
+2. **FHIRPath Queries**: Does not support complex FHIRPath (e.g., `name.where(use='official')`)
+3. **Circular References**: Not detected or handled
 
 ### Workarounds
 
@@ -1298,10 +1297,10 @@ Copyright 2025 Pradeep Kumara Krishnegowda
 
 ### Support
 
-- 📖 **Documentation**: [Wiki](https://github.com/your-org/fhir-mapper-core/wiki)
+- 📖 **Documentation**: [Wiki](https://github.com/pradeepkk321/fhir-mapper/wiki)
 - 💬 **Discussions**: [GitHub Discussions](https://github.com/your-org/fhir-mapper-core/discussions)
-- 🐛 **Issues**: [GitHub Issues](https://github.com/your-org/fhir-mapper-core/issues)
-- 📧 **Email**: support@example.com
+- 🐛 **Issues**: [GitHub Issues](https://github.com/pradeepkk321/fhir-mapper/issues)
+- 📧 **Email**: pradyskumar@gmail.com
 
 ---
 
