@@ -4,7 +4,10 @@ import java.util.List;
 
 import ca.uhn.fhir.context.BaseRuntimeChildDefinition;
 import ca.uhn.fhir.context.BaseRuntimeElementDefinition;
+import ca.uhn.fhir.context.RuntimeChildResourceBlockDefinition;
 import ca.uhn.fhir.context.RuntimeCompositeDatatypeDefinition;
+import ca.uhn.fhir.context.RuntimePrimitiveDatatypeDefinition;
+import ca.uhn.fhir.context.RuntimeResourceBlockDefinition;
 import ca.uhn.fhir.context.RuntimeResourceDefinition;
 
 /**
@@ -57,7 +60,7 @@ public class FhirPathValidator {
     /**
      * Validate FHIR path exists (without strict type checking for nested paths)
      */
-    public ValidationResult validatePathExists(String resourceType, String path) {
+    public ValidationResult validatePathExistsOld(String resourceType, String path) {
         ValidationResult result = new ValidationResult();
         
         if (!isValidResourceType(resourceType)) {
@@ -96,6 +99,28 @@ public class FhirPathValidator {
         return result;
     }
     
+    public ValidationResult validatePathExists(String resourceType, String path) {
+        ValidationResult result = new ValidationResult();
+        
+        if (!isValidResourceType(resourceType)) {
+            result.addError("FHIRPath", "Unknown resource type: " + resourceType);
+            return result;
+        }
+        
+        try {
+            RuntimeResourceDefinition resourceDef = 
+                fhirContext.getResourceDefinition(resourceType);
+            validatePathAgainstDefinition(resourceDef, path, result);
+        } catch (Exception e) {
+            result.addWarning("FHIRPath", 
+                "Could not fully validate path '" + path + "': " + e.getMessage());
+        }
+        
+        return result;
+        
+        
+    }
+    
     /**
      * Validate FHIR path for a resource using HAPI structure definitions
      * @deprecated Use validatePathExists for simpler validation
@@ -121,7 +146,8 @@ public class FhirPathValidator {
             String path, 
             ValidationResult result) {
         
-        String[] parts = path.split("\\.");
+    	String normalizedPath = normalizePath(path);
+        String[] parts = normalizedPath.split("\\.");
         BaseRuntimeElementDefinition<?> currentDef = resourceDef;
         
         for (int i = 0; i < parts.length; i++) {
@@ -140,11 +166,7 @@ public class FhirPathValidator {
                 // Get the child element definition for next iteration
                 if (i < parts.length - 1) {
                     currentDef = getChildElementDefinition(childDef, part);
-                    if (currentDef == null) {
-                        result.addWarning("FHIRPath",
-                            "Cannot fully validate path beyond '" + part + "' - type information unavailable");
-                        return;
-                    }
+                    handlePrimitives(resourceDef, path, result, parts, currentDef, i, part);
                 }
                 
             } else if (currentDef instanceof RuntimeCompositeDatatypeDefinition) {
@@ -162,13 +184,27 @@ public class FhirPathValidator {
                 // Get next level definition
                 if (i < parts.length - 1) {
                     currentDef = getChildElementDefinition(childDef, part);
-                    if (currentDef == null) {
-                        result.addWarning("FHIRPath",
-                            "Cannot fully validate path beyond '" + part + "' - type information unavailable");
-                        return;
-                    }
+                    handlePrimitives(resourceDef, path, result, parts, currentDef, i, part);
                 }
-            } else {
+            } else if (currentDef instanceof RuntimeResourceBlockDefinition) {
+            	RuntimeResourceBlockDefinition blockDef = (RuntimeResourceBlockDefinition) currentDef;
+            	
+            	BaseRuntimeChildDefinition childDef = blockDef.getChildByName(part);
+            	
+                if (childDef == null) {
+                    result.addError("FHIRPath", 
+                        "Field '" + part + "' does not exist in " + blockDef.getName());
+                    return;
+                }
+                
+                // Get next level definition
+                if (i < parts.length - 1) {
+                    currentDef = getChildElementDefinition(childDef, part);
+                    handlePrimitives(resourceDef, path, result, parts, currentDef, i, part);
+                }
+            	
+            } 
+            else {
                 // Primitive or other type - can't validate further
                 if (i < parts.length - 1) {
                     result.addWarning("FHIRPath", 
@@ -178,6 +214,20 @@ public class FhirPathValidator {
             }
         }
     }
+
+	private void handlePrimitives(RuntimeResourceDefinition resourceDef, String path, ValidationResult result,
+			String[] parts, BaseRuntimeElementDefinition<?> currentDef, int i, String part) {
+		if (currentDef == null) {
+		    result.addWarning("FHIRPath",
+		        "Cannot fully validate path beyond '" + part + "' - type information unavailable");
+		    return;
+		} else if (currentDef instanceof RuntimePrimitiveDatatypeDefinition) {
+			RuntimePrimitiveDatatypeDefinition primitiveDef = (RuntimePrimitiveDatatypeDefinition) currentDef;
+			
+			result.addError("FHIRPath", "Field '" + parts[i+1] + "' is not allowed after '" + part + "(" + primitiveDef.getName() + ")" );
+			return;
+		}
+	}
     
     /**
      * Get child element definition from a child definition
