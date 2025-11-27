@@ -1,10 +1,12 @@
 # FHIR Mapper Core
 
-A declarative, Excel/JSON-driven transformation framework for converting between custom JSON/POJO formats and HL7 FHIR resources.
+A declarative, JSON/Excel-driven transformation framework for converting between custom JSON/POJO formats and HL7 FHIR resources.
 
 [![Maven](https://img.shields.io/badge/Maven-3.8+-blue.svg)](https://maven.apache.org/)
 [![Java](https://img.shields.io/badge/Java-17+-orange.svg)](https://www.oracle.com/java/)
 [![HAPI FHIR](https://img.shields.io/badge/HAPI%20FHIR-6.10.0-green.svg)](https://hapifhir.io/)
+
+---
 
 ## Overview
 
@@ -15,9 +17,11 @@ FHIR Mapper Core eliminates the need to write Java transformation code for each 
 - **Expression-based transformations** using JEXL
 - **Code lookups** for terminology mapping with multi-system support
 - **Conditional field mapping** with context variables
+- **Transformation tracing** for debugging and monitoring
 - **Validation** against HAPI FHIR structure definitions
 - **Security scanning** to prevent malicious expressions
-- **Optional tracing:** to track field-level transformation details(success/failures) for debugging and monitoring.
+
+---
 
 ## Quick Start
 
@@ -34,11 +38,11 @@ FHIR Mapper Core eliminates the need to write Java transformation code for each 
 ### Basic Usage
 
 ```java
-// 1. Load mappings from filesystem
+// 1. Load mappings
 MappingLoader loader = new MappingLoader("./mappings");
 MappingRegistry registry = loader.loadAll();
 
-// 2. Create transformation engine
+// 2. Create engine
 TransformationEngine engine = new TransformationEngine(registry);
 
 // 3. Setup context
@@ -46,13 +50,13 @@ TransformationContext context = new TransformationContext();
 context.setOrganizationId("org-123");
 context.getSettings().put("identifierSystem", "urn:oid:2.16.840.1.113883.4.1");
 
-// 4. Get mapping
+// 4. Transform
+String json = "{\"patientId\":\"P123\",\"firstName\":\"John\",\"lastName\":\"Doe\"}";
 ResourceMapping mapping = registry.findById("patient-json-to-fhir-v1");
-
-// 5. Transform!
-String jsonInput = "{\"patientId\":\"P123\",\"firstName\":\"John\",\"lastName\":\"Doe\",\"gender\":\"M\"}";
-Patient patient = engine.jsonToFhirResource(jsonInput, mapping, context, Patient.class);
+Patient patient = engine.jsonToFhirResource(json, mapping, context, Patient.class);
 ```
+
+---
 
 ## Excel Support
 
@@ -80,7 +84,8 @@ All workbooks in the directory are automatically loaded.
 - Each sheet = One lookup table
 - Supports per-mapping target systems
 
-**Directory Structure:**
+### Directory Structure
+
 ```
 mappings/
 ├── lookups/              # JSON lookups (legacy)
@@ -96,7 +101,28 @@ mappings/
 └── excel-generated/      # Auto-generated (cleaned on load)
 ```
 
-**Excel Lookup Format:**
+### Excel Mapping Format
+
+```
+Sheet: "Patient - JSON to FHIR"
+
+Row 1: ID:            | patient-json-to-fhir-v1
+Row 2: Direction:     | JSON_TO_FHIR
+Row 3: Source Type:   | PatientDTO
+Row 4: Target Type:   | Patient
+Row 5: (blank)
+Row 6: id           | sourcePath | targetPath           | dataType | transformExpression        | condition         | required | defaultValue              | lookupTable    | description
+Row 7: patient-id   | patientId  | identifier[0].value  | string   |                            |                   | TRUE     |                           |                | Patient MRN
+Row 8: patient-sys  |            | identifier[0].system | uri      |                            |                   | TRUE     | $ctx.settings['mrnSystem']|                | MRN system
+Row 9: patient-name | firstName  | name[0].given[0]     | string   |                            |                   | TRUE     |                           |                | First name
+Row 10: patient-ssn | ssn        | identifier[1].value  | string   | fn.replace(value, '-', '') | ssn != null      | FALSE    |                           |                | SSN no dashes
+Row 11: patient-gen | gender     | gender               | code     |                            |                   | TRUE     |                           | gender-lookup  | Gender code
+```
+
+**Multiple sheets = Multiple mappings** in one workbook.
+
+### Excel Lookup Format
+
 ```
 Sheet: "gender-lookup"
 
@@ -114,382 +140,279 @@ Row 10: O         | other      | http://custom.org/special-gender-system   | Oth
 
 Note: `targetSystem` in row 8+ is optional. If blank, uses `Default Target System` from row 4.
 
-**Excel Mapping Format:**
-```
-Sheet: "Patient - JSON to FHIR"
-
-Row 1: ID:            | patient-json-to-fhir-v1
-Row 2: Direction:     | JSON_TO_FHIR
-Row 3: Source Type:   | PatientDTO
-Row 4: Target Type:   | Patient
-Row 5: (blank)
-Row 6: id           | sourcePath | targetPath           | dataType | transformExpression        | condition              | required | defaultValue              | lookupTable    | description
-Row 7: patient-id   | patientId  | identifier[0].value  | string   |                            |                        | TRUE     |                           |                | Patient MRN
-Row 8: patient-sys  |            | identifier[0].system | uri      |                            |                        | TRUE     | $ctx.settings['mrnSystem']|                | MRN system
-Row 9: patient-name | firstName  | name[0].given[0]     | string   |                            |                        | TRUE     |                           |                | First name
-Row 10: patient-ssn | ssn        | identifier[1].value  | string   | fn.replace(value, '-', '') | ssn != null            | FALSE    |                           |                | SSN no dashes
-Row 11: patient-gen | gender     | gender               | code     |                            |                        | TRUE     |                           | gender-lookup  | Gender code
-```
-
-**Multiple sheets = Multiple mappings** in one workbook.
-
 **All Excel files are scanned:**
 - `mappings/excel/*.xlsx` → Resource mappings
 - `mappings/lookups-excel/*.xlsx` → Lookup tables
 - IDs must be unique across **all** workbooks
 
-## Features
+---
 
-### 1. Multiple Input/Output Formats
+## Core Features
 
-The engine supports 12 transformation methods covering all combinations:
+### Transformation Methods
 
-**JSON → FHIR**
+The engine provides 12 methods covering all conversion scenarios:
+
+| Method | Input | Output | Use Case |
+|--------|-------|--------|----------|
+| `jsonToFhirMap` | JSON String/Map/POJO | FHIR Map | Get FHIR structure as Map |
+| `jsonToFhirJson` | JSON String/Map/POJO | FHIR JSON String | Get FHIR as JSON string |
+| `jsonToFhirResource` | JSON String/Map/POJO | HAPI Resource | Get typed HAPI resource |
+| `fhirToJsonMap` | FHIR JSON/Map/Resource | JSON Map | Get JSON structure as Map |
+| `fhirToJsonString` | FHIR JSON/Map/Resource | JSON String | Get JSON as string |
+| `fhirToJsonObject` | FHIR JSON/Map/Resource | POJO | Get typed POJO |
+
+**Examples:**
+
 ```java
-// String to Map
-Map<String, Object> fhirMap = engine.jsonToFhirMap(jsonString, mapping, context);
-
-// String to HAPI Resource
+// JSON String → HAPI Resource
 Patient patient = engine.jsonToFhirResource(jsonString, mapping, context, Patient.class);
 
-// POJO to HAPI Resource
+// POJO → HAPI Resource
 PatientDTO dto = new PatientDTO();
 Patient patient = engine.jsonToFhirResource(dto, mapping, context, Patient.class);
 
-// Map to FHIR JSON String
-String fhirJson = engine.jsonToFhirJson(dataMap, mapping, context);
-```
-
-**FHIR → JSON**
-```java
-// FHIR JSON to Map
-Map<String, Object> jsonMap = engine.fhirToJsonMap(fhirJson, mapping, context);
-
-// HAPI Resource to POJO
+// HAPI Resource → POJO
 PatientDTO dto = engine.fhirToJsonObject(patient, mapping, context, PatientDTO.class);
 
-// FHIR Map to JSON String
-String json = engine.fhirToJsonString(fhirMap, mapping, context);
+// JSON String → FHIR JSON String
+String fhirJson = engine.jsonToFhirJson(jsonString, mapping, context);
 ```
 
-### 2. Declarative Mapping Configuration
+### Mapping Configuration
 
-Define mappings in JSON files instead of writing Java code:
+**JSON Structure:**
 
 ```json
 {
   "id": "patient-json-to-fhir-v1",
   "name": "Patient JSON to FHIR Mapping",
+  "version": "1.0.0",
   "direction": "JSON_TO_FHIR",
   "sourceType": "PatientDTO",
   "targetType": "Patient",
   "fieldMappings": [
     {
-      "id": "patient-identifier",
+      "id": "patient-id",
       "sourcePath": "patientId",
       "targetPath": "identifier[0].value",
       "dataType": "string",
-      "required": true
-    },
-    {
-      "id": "patient-gender",
-      "sourcePath": "gender",
-      "targetPath": "gender",
-      "dataType": "code",
-      "lookupTable": "gender-lookup",
-      "required": true
+      "required": true,
+      "description": "Patient MRN"
     }
   ]
 }
 ```
 
-### 3. Expression Language (JEXL)
+**FieldMapping Properties:**
 
-Transform data using JEXL expressions with built-in functions:
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `id` | string | Yes | Unique field identifier |
+| `sourcePath` | string | No* | Path in source (e.g., `patient.name`) |
+| `targetPath` | string | Yes | Path in target (e.g., `name[0].given[0]`) |
+| `dataType` | string | No | FHIR type: string, integer, date, boolean, code, etc. |
+| `transformExpression` | string | No | JEXL expression (e.g., `fn.uppercase(value)`) |
+| `condition` | string | No | JEXL boolean expression (e.g., `value != null`) |
+| `validator` | string | No | Validation rule (e.g., `notEmpty()`) |
+| `required` | boolean | No | Fail if value is null (default: false) |
+| `defaultValue` | string | No | Static value or $ctx variable |
+| `lookupTable` | string | No | Reference to lookup table ID |
+| `description` | string | No | Documentation |
+
+*sourcePath can be null if defaultValue is provided
+
+**Common Patterns:**
 
 ```json
+// Required field
 {
+  "id": "patient-name",
+  "sourcePath": "firstName",
+  "targetPath": "name[0].given[0]",
+  "required": true
+}
+
+// Conditional mapping
+{
+  "id": "patient-middle-name",
+  "sourcePath": "middleName",
+  "targetPath": "name[0].given[1]",
+  "condition": "middleName != null && middleName != ''"
+}
+
+// With transformation
+{
+  "id": "patient-ssn",
   "sourcePath": "ssn",
   "targetPath": "identifier[1].value",
-  "transformExpression": "fn.replace(value, '-', '')",
-  "condition": "ssn != null && ssn != ''"
+  "transformExpression": "fn.replace(value, '-', '')"
 }
-```
 
-**Built-in Functions:**
-
-| Function | Description | Example |
-|----------|-------------|---------|
-| `fn.uppercase(str)` | Convert to uppercase | `"JOHN"` |
-| `fn.lowercase(str)` | Convert to lowercase | `"john"` |
-| `fn.replace(str, old, new)` | Replace substring | `fn.replace(value, '-', '')` |
-| `fn.concat(str...)` | Concatenate strings | `fn.concat('Organization/', orgId)` |
-| `fn.formatDate(date, pattern)` | Format date | `fn.formatDate(value, 'yyyy-MM-dd')` |
-| `fn.toInt(value)` | Convert to integer | `fn.toInt("42")` |
-| `fn.toBoolean(value)` | Convert to boolean | `fn.toBoolean("true")` |
-| `fn.defaultIfNull(value, default)` | Fallback value | `fn.defaultIfNull(value, 'Unknown')` |
-
-### 4. Context Variables
-
-Access runtime context in expressions and default values:
-
-```json
+// With lookup
 {
+  "id": "patient-gender",
+  "sourcePath": "gender",
+  "targetPath": "gender",
+  "lookupTable": "gender-lookup"
+}
+
+// Context default value
+{
+  "id": "patient-id-system",
   "targetPath": "identifier[0].system",
   "defaultValue": "$ctx.settings['identifierSystem']"
-},
-{
-  "targetPath": "managingOrganization.reference",
-  "transformExpression": "fn.concat('Organization/', ctx.organizationId)",
-  "condition": "ctx.organizationId != null"
 }
 ```
 
-**Context Object:**
+### Context Variables
+
+Context variables provide runtime values using the `$ctx` prefix, preventing collision with source data fields.
+
+**Built-in Properties:**
+
 ```java
 TransformationContext context = new TransformationContext();
-
-// Built-in properties
 context.setOrganizationId("org-123");
 context.setFacilityId("facility-456");
 context.setTenantId("tenant-789");
+```
 
-// Settings map
+**Settings Map:**
+
+```java
 context.getSettings().put("identifierSystem", "urn:oid:2.16.840.1.113883.4.1");
+context.getSettings().put("mrnSystem", "urn:oid:1.2.3.4");
+```
 
-// Custom variables
+**Custom Variables:**
+
+```java
 context.setVariable("customKey", "customValue");
 ```
 
-### 5. Code Lookup Tables
+**Usage in Expressions:**
 
-Map between code systems using lookup tables:
+```json
+{
+  "transformExpression": "fn.concat('Organization/', $ctx.organizationId)",
+  "condition": "$ctx.organizationId != null"
+}
+```
 
-**Definition:** `mappings/lookups/gender-lookup.json`
+**Usage in Default Values:**
+
+```json
+{
+  "defaultValue": "$ctx.settings['identifierSystem']"
+}
+```
+
+**Why $ctx prefix?**
+- Prevents collision with source fields named `organizationId`
+- Clear semantic distinction
+- Easy to search/grep
+
+### Expression Language (JEXL)
+
+Transform data using JEXL expressions with built-in functions:
+
+**String Functions:**
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `fn.uppercase(str)` | Convert to uppercase | `fn.uppercase(value)` → `"JOHN"` |
+| `fn.lowercase(str)` | Convert to lowercase | `fn.lowercase(value)` → `"john"` |
+| `fn.trim(str)` | Remove whitespace | `fn.trim(value)` |
+| `fn.replace(str, old, new)` | Replace substring | `fn.replace(value, '-', '')` |
+| `fn.concat(str...)` | Concatenate strings | `fn.concat('Org/', $ctx.organizationId)` |
+| `fn.removeHyphens(str)` | Remove all hyphens | `fn.removeHyphens(value)` |
+
+**Date/Time Functions:**
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `fn.formatDate(date, pattern)` | Format date | `fn.formatDate(value, 'yyyy-MM-dd')` |
+| `fn.now()` | Current timestamp | `fn.now()` |
+| `fn.today()` | Current date | `fn.today()` |
+
+**Type Conversion:**
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `fn.toInt(value)` | Convert to integer | `fn.toInt("42")` → `42` |
+| `fn.toDouble(value)` | Convert to double | `fn.toDouble("3.14")` → `3.14` |
+| `fn.toBoolean(value)` | Convert to boolean | `fn.toBoolean("true")` → `true` |
+
+**Utility Functions:**
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `fn.defaultIfNull(val, default)` | Fallback value | `fn.defaultIfNull(value, 'Unknown')` |
+| `fn.coalesce(val1, val2, ...)` | First non-null | `fn.coalesce(value, defaultVal, 'N/A')` |
+| `fn.uuid()` | Generate UUID | `fn.uuid()` |
+
+**Condition Examples:**
+
+```json
+// Simple null check
+"condition": "value != null"
+
+// String validation
+"condition": "value != null && value != ''"
+
+// Multiple conditions
+"condition": "ssn != null && ssn.length() == 11"
+
+// Context-based
+"condition": "$ctx.organizationId != null"
+
+// Complex logic
+"condition": "(age >= 18 && status == 'active') || isVIP == true"
+```
+
+**Security Restrictions:**
+
+Expressions are scanned and blocked if they contain:
+- System/Runtime access
+- File I/O operations
+- Network operations
+- Reflection/ClassLoader
+- Database access
+- Script engines
+
+### Code Lookups
+
+Map codes between systems with support for multiple target systems.
+
+**Single-System Lookup:**
+
 ```json
 {
   "id": "gender-lookup",
   "name": "Gender Code Mapping",
   "sourceSystem": "internal",
-  "targetSystem": "http://hl7.org/fhir/administrative-gender",
+  "defaultTargetSystem": "http://hl7.org/fhir/administrative-gender",
   "bidirectional": false,
   "mappings": [
-    {"sourceCode": "M", "targetCode": "male", "display": "Male"},
-    {"sourceCode": "F", "targetCode": "female", "display": "Female"},
-    {"sourceCode": "O", "targetCode": "other", "display": "Other"},
-    {"sourceCode": "U", "targetCode": "unknown", "display": "Unknown"}
+    {
+      "sourceCode": "M",
+      "targetCode": "male",
+      "targetSystem": null,
+      "display": "Male"
+    },
+    {
+      "sourceCode": "F",
+      "targetCode": "female",
+      "targetSystem": null,
+      "display": "Female"
+    }
   ]
 }
 ```
 
-**Usage:**
-```json
-{
-  "sourcePath": "gender",
-  "targetPath": "gender",
-  "lookupTable": "gender-lookup"
-}
-```
+**Multi-System Lookup:**
 
-### 6. Conditional Mapping
-
-Map fields based on conditions:
-
-```json
-{
-  "id": "patient-ssn",
-  "sourcePath": "ssn",
-  "targetPath": "identifier[1].value",
-  "condition": "ssn != null && ssn != ''",
-  "transformExpression": "fn.replace(value, '-', '')"
-}
-```
-
-### 7. Validation
-
-**Startup Validation:**
-- FHIR resource types exist
-- FHIR paths are valid (using HAPI structure definitions)
-- Data types match expected FHIR types
-- Expressions are syntactically correct
-- Lookup tables are defined
-
-**Security Validation:**
-- Scans for dangerous patterns (System calls, reflection, file I/O)
-- Prevents malicious code execution
-- Always fails on CRITICAL security issues
-
-```java
-MappingLoader loader = new MappingLoader("./mappings", true); // strict=true
-MappingRegistry registry = loader.loadAll(); // Throws if validation fails
-```
-**Console Log: Load Mappings**
-```
-╔════════════════════════════════════════════════════════════╗
-║  FHIR Mapper - Loading Mappings                            ║
-╚════════════════════════════════════════════════════════════╝
-
-Base path: ./mappings
-FHIR Version: 4.0.1
-Excel Support: Enabled
-
-Cleaning up excel-generated directory...
-✓ Cleaned up excel-generated directory
-
-Loading lookup tables...
-  ✓ address-use-lookup (JSON: address-use-lookup.json)
-  ✓ birth-sex-lookup (JSON: birth-sex-lookup.json)
-  ✓ ethnicity-text-lookup (JSON: ethnicity-text-lookup.json)
-  ✓ gender-lookup-reverse (JSON: gender-lookup-reverse.json)
-  ✓ gender-lookup (JSON: gender-lookup.json)
-  ✓ language-lookup (JSON: language-lookup.json)
-  ✓ marital-status-lookup (JSON: marital-status-lookup.json)
-  ✓ race-text-lookup (JSON: race-text-lookup.json)
-  ✓ telecom-use-lookup (JSON: telecom-use-lookup.json)
-ERROR StatusLogger Log4j2 could not find a logging implementation. Please add log4j-core to the classpath. Using SimpleLogger to log to the console...
-  ✓ address-use-lookup (Excel: all-lookups.xlsx)
-  ✓ birth-sex-lookup (Excel: all-lookups.xlsx)
-  ✓ ethnicity-text-lookup (Excel: all-lookups.xlsx)
-  ✓ gender-lookup-reverse (Excel: all-lookups.xlsx)
-  ✓ gender-lookup (Excel: all-lookups.xlsx)
-  ✓ language-lookup (Excel: all-lookups.xlsx)
-  ✓ marital-status-lookup (Excel: all-lookups.xlsx)
-  ✓ race-text-lookup (Excel: all-lookups.xlsx)
-  ✓ telecom-use-lookup (Excel: all-lookups.xlsx)
-✓ Loaded 9 lookup tables
-
-Loading resource mappings...
-  ✓ patient-complex-json-to-fhir-v1 [JSON_TO_FHIR] (JSON: patient-complex-json-to-fhir.json)
-  📊 Converting Excel workbook: all-mappings.xlsx...
-    ✓ complex-patient-v1 [JSON_TO_FHIR] (Sheet: Patient-V1)
-      → Generated: excel-generated/complex-patient-v1.json
-    ✓ complex-patient-v2 [JSON_TO_FHIR] (Sheet: Patient-V2)
-      → Generated: excel-generated/complex-patient-v2.json
-    ✓ patient-fhir-to-json [FHIR_TO_JSON] (Sheet: Patient FHIR to JSON Mapping)
-      → Generated: excel-generated/patient-fhir-to-json.json
-    ✓ patient-json-to-fhir [JSON_TO_FHIR] (Sheet: Patient JSON to FHIR Mapping)
-      → Generated: excel-generated/patient-json-to-fhir.json
-✓ Loaded 5 resource mappings
-  - 1 from JSON directory
-  - 4 from 1 Excel workbook(s)
-
-Validating mappings using HAPI FHIR structure definitions...
-Validation warnings:
-  [WARN] Mapping: patient-complex-json-to-fhir-v1, Field: patient-managing-org: Field has neither sourcePath nor defaultValue
-  [WARN] Mapping: complex-patient-v1, Field: patient-managing-org: Field has neither sourcePath nor defaultValue
-  [WARN] Mapping: complex-patient-v2, Field: patient-managing-org: Field has neither sourcePath nor defaultValue
-  [WARN] Mapping: patient-json-to-fhir, Field: patient-managing-org: Field has neither sourcePath nor defaultValue
-Running security validation...
-✓ Security validation passed - no issues found
-
-╔════════════════════════════════════════════════════════════╗
-║  Mapping registry loaded successfully                      ║
-╚════════════════════════════════════════════════════════════╝
-```
-
-### 8. Transformation Tracing
-
-Optionally logs a lightweight trace of the transformation process, helping you understand how each field was mapped. When enabled, the engine generates a small JSON summary containing the trace ID, mapping used, overall status, and basic per-field results. More details are available in the [Transformation Tracing](https://github.com/pradeepkk321/fhir-mapper/wiki/Transformation-Tracing) section.
-
-**Enable:**
-```java
-context.enableTracing();
-```
-
-**Use:**
-```
-TransformationTrace trace = context.getTrace();
-System.out.println(trace.toString()); // JSON summary
-```
-
-**Example Output (trimmed):**
-```
-{
-  "traceId": "abc-123",
-  "mappingId": "patient-json-to-fhir",
-  "success": true,
-  "fieldTransformationTraces": [
-    { "fieldId": "patient-id", "resultValue": "P123" }
-  ]
-}
-```
-
-## Project Structure
-
-```
-your-project/
-├── mappings/
-│   ├── lookups/
-│   │   ├── gender-lookup.json
-│   │   ├── marital-status-lookup.json
-│   │   └── address-use-lookup.json
-│   └── resources/
-│       ├── patient-json-to-fhir.json
-│       ├── patient-fhir-to-json.json
-│       ├── encounter-json-to-fhir.json
-│       └── observation-json-to-fhir.json
-└── src/
-    └── main/
-        └── java/
-            └── com/example/
-                └── FhirTransformService.java
-```
-
-## Configuration Reference
-
-### ResourceMapping
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | string | Yes | Unique mapping identifier |
-| `name` | string | No | Human-readable name |
-| `version` | string | No | Mapping version |
-| `direction` | enum | Yes | `JSON_TO_FHIR` or `FHIR_TO_JSON` |
-| `sourceType` | string | Yes | Source type name (DTO or FHIR resource) |
-| `targetType` | string | Yes | Target type name (FHIR resource or DTO) |
-| `fieldMappings` | array | Yes | Array of field mappings |
-
-### FieldMapping
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | string | Yes | Unique field identifier |
-| `sourcePath` | string | No* | Path in source object (e.g., `patient.name`) |
-| `targetPath` | string | Yes | Path in target object (e.g., `name[0].given[0]`) |
-| `dataType` | string | No | FHIR data type (string, integer, date, boolean, code) |
-| `transformExpression` | string | No | JEXL expression to transform value |
-| `condition` | string | No | JEXL expression (must evaluate to boolean) |
-| `validator` | string | No | Validation rule (e.g., `notEmpty()`, `regex('^\\d{9}$')`) |
-| `required` | boolean | No | If true, transformation fails if value is null |
-| `defaultValue` | string | No | Default/constant value (supports `$ctx.*` variables) |
-| `lookupTable` | string | No | Reference to code lookup table ID |
-| `description` | string | No | Documentation |
-
-*Note: `sourcePath` can be null if `defaultValue` is provided
-
-### CodeLookupTable
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | string | Yes | Unique lookup identifier |
-| `name` | string | No | Human-readable name |
-| `sourceSystem` | string | No | Source coding system |
-| `defaultTargetSystem` | string | No | Default target system (used when mapping doesn't specify) |
-| `bidirectional` | boolean | No | Allow reverse lookups (default: false) |
-| `defaultSourceCode` | string | No | Fallback for reverse lookup |
-| `defaultTargetCode` | string | No | Fallback for forward lookup |
-| `mappings` | array | Yes | Array of code mappings |
-
-### CodeMapping (per-row in lookup table)
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `sourceCode` | string | Yes | Source code value |
-| `targetCode` | string | Yes | Target code value |
-| `targetSystem` | string | No | **Per-mapping target system** (overrides defaultTargetSystem) |
-| `display` | string | No | Human-readable display text |
-
-**Multi-System Example:**
 ```json
 {
   "id": "diagnosis-lookup",
@@ -500,65 +423,56 @@ your-project/
       "sourceCode": "DIAB",
       "targetCode": "73211009",
       "targetSystem": null,
-      "display": "Diabetes mellitus"
+      "display": "Diabetes mellitus (SNOMED)"
     },
     {
-      "sourceCode": "CVD",
+      "sourceCode": "HTN",
       "targetCode": "I10",
       "targetSystem": "http://hl7.org/fhir/sid/icd-10",
-      "display": "Hypertension"
+      "display": "Hypertension (ICD-10)"
     }
   ]
 }
 ```
 
-## REST API Integration Example
+When `targetSystem` is null, uses `defaultTargetSystem`. This allows most mappings to use the default while specific codes can override.
 
-```java
-@RestController
-@RequestMapping("/api/fhir")
-public class FhirTransformController {
-    
-    @Autowired private TransformationEngine engine;
-    @Autowired private MappingRegistry registry;
-    
-    @PostMapping("/patient")
-    public Patient createPatient(@RequestBody PatientDTO dto) throws Exception {
-        TransformationContext ctx = buildContext();
-        ResourceMapping mapping = registry.findBySourceAndDirection(
-            "PatientDTO", MappingDirection.JSON_TO_FHIR
-        );
-        return engine.jsonToFhirResource(dto, mapping, ctx, Patient.class);
-    }
-    
-    @GetMapping("/patient/{id}")
-    public PatientDTO getPatient(@PathVariable String id) throws Exception {
-        // Fetch from FHIR server
-        Patient fhirPatient = fhirClient.read()
-            .resource(Patient.class)
-            .withId(id)
-            .execute();
-        
-        TransformationContext ctx = buildContext();
-        ResourceMapping mapping = registry.findBySourceAndDirection(
-            "Patient", MappingDirection.FHIR_TO_JSON
-        );
-        return engine.fhirToJsonObject(fhirPatient, mapping, ctx, PatientDTO.class);
-    }
-    
-    private TransformationContext buildContext() {
-        TransformationContext ctx = new TransformationContext();
-        ctx.setOrganizationId(getCurrentOrganizationId());
-        ctx.getSettings().put("identifierSystem", getIdentifierSystem());
-        return ctx;
-    }
+**Bidirectional Lookups:**
+
+```json
+{
+  "id": "gender-lookup-bidirectional",
+  "sourceSystem": "internal",
+  "defaultTargetSystem": "http://hl7.org/fhir/administrative-gender",
+  "bidirectional": true,
+  "mappings": [
+    {"sourceCode": "M", "targetCode": "male"},
+    {"sourceCode": "F", "targetCode": "female"}
+  ]
 }
 ```
-## Transformation Tracing
+
+Enables both:
+- `M` → `male` (forward)
+- `male` → `M` (reverse)
+
+**Usage in Mapping:**
+
+```json
+{
+  "id": "patient-gender",
+  "sourcePath": "gender",
+  "targetPath": "gender",
+  "lookupTable": "gender-lookup"
+}
+```
+
+### Transformation Tracing
 
 Track field-level transformation details for debugging and monitoring.
 
-### Enable Tracing
+**Enable Tracing:**
+
 ```java
 TransformationContext context = new TransformationContext();
 context.setOrganizationId("org-123");
@@ -570,7 +484,8 @@ context.enableTracing();
 context.enableTracing("trace-12345");
 ```
 
-### Basic Usage
+**Basic Usage:**
+
 ```java
 ResourceMapping mapping = registry.findById("patient-json-to-fhir-v1");
 
@@ -599,7 +514,8 @@ try {
 }
 ```
 
-### Trace Report Output
+**Trace Report Output:**
+
 ```
 === Transformation Trace Report ===
 Trace ID: abc-123-def-456
@@ -621,7 +537,8 @@ Failures:
     Source value: null
 ```
 
-### JSON Trace Export
+**JSON Trace Export:**
+
 ```java
 // Get JSON representation
 String traceJson = trace.toString();
@@ -632,98 +549,36 @@ Files.write(Paths.get(filename), traceJson.getBytes());
 ```
 
 **JSON Structure:**
+
 ```json
 {
-  "traceId": "98c15d0e-6508-4e3b-ab46-5f4e0b1256ab",
-  "source": "ComplexPatientDTO",
+  "traceId": "abc-123-def-456",
+  "source": "PatientDTO",
   "target": "Patient",
-  "mappingId": "complex-patient-v1",
+  "mappingId": "patient-json-to-fhir-v1",
   "success": true,
-  "errorMessage": "null",
-  "startTime": 1764175004539,
-  "endTime": 1764175004623,
-  "duration": "84 millis",
+  "startTime": 1701234567890,
+  "endTime": 1701234567935,
   "fieldTransformationTraces": [
     {
-      "fieldId": "patient-mrn",
+      "fieldId": "patient-id",
       "sourcePath": "patientId",
       "targetPath": "identifier[0].value",
-      "sourceValue": "MRN-12345678",
-      "resultValue": "MRN-12345678",
-      "expression": "null",
-      "condition": "null",
+      "sourceValue": "P123",
+      "resultValue": "P123",
+      "expression": null,
+      "condition": null,
       "conditionPassed": false,
-      "errorMessage": "null",
-      "startTime": 1764175004548,
-      "endTime": 1764175004548,
-      "duration": "0 millis"
-    },
-    {
-      "fieldId": "patient-mrn-system",
-      "sourcePath": "null",
-      "targetPath": "identifier[0].system",
-      "sourceValue": "null",
-      "resultValue": "urn:oid:2.16.840.1.113883.4.1",
-      "expression": "null",
-      "condition": "null",
-      "conditionPassed": false,
-      "errorMessage": "null",
-      "startTime": 1764175004548,
-      "endTime": 1764175004548,
-      "duration": "0 millis"
-    },
-    {
-      "fieldId": "patient-mrn-type-code",
-      "sourcePath": "null",
-      "targetPath": "identifier[0].type.coding[0].code",
-      "sourceValue": "null",
-      "resultValue": "MR",
-      "expression": "null",
-      "condition": "null",
-      "conditionPassed": false,
-      "errorMessage": "null",
-      "startTime": 1764175004548,
-      "endTime": 1764175004548,
-      "duration": "0 millis"
-    },
-    {
-      "fieldId": "patient-mrn-type-system",
-      "sourcePath": "null",
-      "targetPath": "identifier[0].type.coding[0].system",
-      "sourceValue": "null",
-      "resultValue": "http://terminology.hl7.org/CodeSystem/v2-0203",
-      "expression": "null",
-      "condition": "null",
-      "conditionPassed": false,
-      "errorMessage": "null",
-      "startTime": 1764175004548,
-      "endTime": 1764175004548,
-      "duration": "0 millis"
-    },
-    {
-      "fieldId": "patient-ssn",
-      "sourcePath": "ssn",
-      "targetPath": "identifier[1].value",
-      "sourceValue": "123-45-6789",
-      "resultValue": "123456789",
-      "expression": "fn:replace(value, '-', '')",
-      "condition": "ssn != null && ssn != ''",
-      "conditionPassed": true,
-      "errorMessage": "null",
-      "startTime": 1764175004548,
-      "endTime": 1764175004568,
-      "duration": "20 millis"
-    },
-    {...},
-    {...},
-    .
-    .
-    .
+      "errorMessage": null,
+      "startTime": 1701234567891,
+      "endTime": 1701234567892
+    }
   ]
 }
 ```
 
-### Analyze Specific Issues
+**Analyze Specific Issues:**
+
 ```java
 TransformationTrace trace = context.getTrace();
 
@@ -748,9 +603,10 @@ List<FieldTransformationTrace> transformErrors = trace.getFieldTransformationTra
     .collect(Collectors.toList());
 ```
 
-### Production Usage
+**Production Usage:**
 
 Tracing adds ~5-10% overhead. Enable selectively:
+
 ```java
 // Only for specific patients
 if (patientId.equals("debug-patient-123")) {
@@ -773,7 +629,8 @@ try {
 }
 ```
 
-### REST API Integration
+**REST API Integration:**
+
 ```java
 @PostMapping("/transform/patient")
 public ResponseEntity<PatientResponse> transform(
@@ -801,83 +658,7 @@ public ResponseEntity<PatientResponse> transform(
 }
 ```
 
-### Field-Level Details
-
-Access individual field transformation details:
-```java
-for (FieldTransformationTrace field : trace.getFieldTransformationTraces()) {
-    System.out.println("Field: " + field.getFieldId());
-    System.out.println("  Source path: " + field.getSourcePath());
-    System.out.println("  Target path: " + field.getTargetPath());
-    System.out.println("  Source value: " + field.getSourceValue());
-    System.out.println("  Result value: " + field.getResultValue());
-    System.out.println("  Duration: " + field.getDuration() + "ms");
-    
-    if (field.getExpression() != null) {
-        System.out.println("  Expression: " + field.getExpression());
-    }
-    
-    if (field.getCondition() != null) {
-        System.out.println("  Condition: " + field.getCondition());
-        System.out.println("  Condition passed: " + field.isConditionPassed());
-    }
-    
-    if (field.getErrorMessage() != null) {
-        System.out.println("  ERROR: " + field.getErrorMessage());
-    }
-}
-```
-
-## Complex Mapping Example
-
-See the complete example in `ComplexRealTimeExample.java` which demonstrates:
-
-- Multiple identifiers (MRN, SSN)
-- Name with suffix
-- Multiple addresses and contacts
-- Race/ethnicity extensions (US Core)
-- Birth sex extension
-- Marital status with code system
-- Preferred language
-- Managing organization reference
-
-The mapping configuration shows how to handle:
-- Array indexing (`addresses[0]`, `name[0].given[1]`)
-- Conditional fields (`condition: "ssn != null && ssn != ''"`)
-- Extensions with nested structure
-- Code lookups for standardization
-- Context-based default values
-
-## Validation & Security
-
-### Validation Modes
-
-```java
-// Strict mode (default) - throws on validation errors
-MappingLoader loader = new MappingLoader("./mappings", true);
-
-// Lenient mode - logs errors but continues
-MappingLoader loader = new MappingLoader("./mappings", false);
-```
-
-### Security Scanning
-
-The framework automatically scans expressions for dangerous patterns:
-
-**CRITICAL Issues** (always fails):
-- Runtime execution (`Runtime.getRuntime()`)
-- Process creation (`ProcessBuilder`)
-- Script engines (`ScriptEngine`)
-
-**HIGH Issues** (logged):
-- Reflection (`Class.forName`, `Method.invoke`)
-- Network I/O (`Socket`, `URLConnection`)
-- Database access (`java.sql.*`)
-
-**MEDIUM/LOW Issues** (warnings):
-- File I/O (`File`, `FileInputStream`)
-- Threading (`new Thread()`)
-
+---
 
 ## Advanced Usage
 
@@ -887,19 +668,15 @@ The framework automatically scans expressions for dangerous patterns:
 List<PatientDTO> patients = loadPatients();
 List<Patient> fhirPatients = new ArrayList<>();
 
-ResourceMapping mapping = registry.findBySourceAndDirection(
-    "PatientDTO", MappingDirection.JSON_TO_FHIR
-);
+ResourceMapping mapping = registry.findById("patient-json-to-fhir-v1");
+TransformationContext context = createContext();
 
 for (PatientDTO dto : patients) {
     try {
-        Patient patient = engine.jsonToFhirResource(
-            dto, mapping, context, Patient.class
-        );
+        Patient patient = engine.jsonToFhirResource(dto, mapping, context, Patient.class);
         fhirPatients.add(patient);
     } catch (Exception e) {
-        logger.error("Failed to transform patient {}: {}", 
-            dto.getPatientId(), e.getMessage());
+        logger.error("Failed patient {}: {}", dto.getPatientId(), e.getMessage());
     }
 }
 ```
@@ -927,6 +704,7 @@ TransformationEngine engine = new TransformationEngine(registry, fhirContext);
 
 ```java
 // Validate mappings without loading
+MappingLoader loader = new MappingLoader("./mappings");
 ValidationResult result = loader.validateOnly();
 
 if (!result.isValid()) {
@@ -936,30 +714,480 @@ if (!result.isValid()) {
 }
 ```
 
-## Limitations
+### Excel ↔ JSON Conversion CLI
 
-### Current Limitations
+**Single File:**
 
-1. **Nested Path Validation**: Only first-level fields are validated against FHIR structure definitions
-2. **Array Iteration**: Cannot map "all elements" in an array automatically
-3. **FHIRPath Queries**: Does not support FHIRPath expressions like `name.where(use='official').given[0]`
-4. **Lookup Tables**: Only simple code-to-code mappings (no conditional or temporal lookups)
-5. **Circular References**: Not detected or handled
+```bash
+# Excel to JSON
+java -jar fhir-mapper-cli.jar convert --excel-to-json mapping.xlsx mapping.json
 
-### Workarounds
-
-**Array Mapping**: Specify each index explicitly
-```json
-{"sourcePath": "addresses[0]", "targetPath": "address[0]"},
-{"sourcePath": "addresses[1]", "targetPath": "address[1]"}
+# JSON to Excel
+java -jar fhir-mapper-cli.jar convert --json-to-excel mapping.json mapping.xlsx
 ```
 
-**Complex Queries**: Use JEXL expressions in transformations
-```json
-{
-  "transformExpression": "addresses.stream().filter(a -> a.type == 'HOME').findFirst().orElse(null)"
+**Batch Directory:**
+
+```bash
+# Convert all Excel files to JSON
+java -jar fhir-mapper-cli.jar batch --excel-to-json ./excel-dir ./json-dir
+
+# Convert all JSON files to Excel
+java -jar fhir-mapper-cli.jar batch --json-to-excel ./json-dir ./excel-dir
+```
+
+**Validate:**
+
+```bash
+java -jar fhir-mapper-cli.jar validate ./mappings
+```
+
+---
+
+## Configuration Reference
+
+### ResourceMapping
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | Yes | Unique mapping identifier |
+| `name` | string | No | Human-readable name |
+| `version` | string | No | Mapping version |
+| `direction` | enum | Yes | `JSON_TO_FHIR` or `FHIR_TO_JSON` |
+| `sourceType` | string | Yes | Source type name |
+| `targetType` | string | Yes | Target type name |
+| `fieldMappings` | array | Yes | Array of field mappings |
+
+### FieldMapping
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | Yes | Unique field identifier |
+| `sourcePath` | string | No* | Path in source (e.g., `patient.name`) |
+| `targetPath` | string | Yes | Path in target (e.g., `name[0].given[0]`) |
+| `dataType` | string | No | FHIR type: string, integer, date, boolean, code |
+| `transformExpression` | string | No | JEXL expression |
+| `condition` | string | No | JEXL boolean expression |
+| `validator` | string | No | Validation rule |
+| `required` | boolean | No | Fail if null (default: false) |
+| `defaultValue` | string | No | Static value or $ctx variable |
+| `lookupTable` | string | No | Reference to lookup table ID |
+| `description` | string | No | Documentation |
+
+*sourcePath can be null if defaultValue is provided
+
+### CodeLookupTable
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | Yes | Unique lookup identifier |
+| `name` | string | No | Human-readable name |
+| `sourceSystem` | string | No | Source coding system |
+| `defaultTargetSystem` | string | No | Default target system |
+| `bidirectional` | boolean | No | Allow reverse lookups (default: false) |
+| `defaultSourceCode` | string | No | Fallback for reverse lookup |
+| `defaultTargetCode` | string | No | Fallback for forward lookup |
+| `mappings` | array | Yes | Array of code mappings |
+
+### CodeMapping
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `sourceCode` | string | Yes | Source code value |
+| `targetCode` | string | Yes | Target code value |
+| `targetSystem` | string | No | Per-mapping target system (overrides default) |
+| `display` | string | No | Human-readable display text |
+
+### TransformationContext
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `organizationId` | string | Current organization ID |
+| `facilityId` | string | Current facility ID |
+| `tenantId` | string | Current tenant ID |
+| `settings` | Map<String, String> | Configuration settings |
+| `variables` | Map<String, Object> | Custom variables |
+| `enableTracing` | boolean | Enable transformation tracing |
+| `trace` | TransformationTrace | Trace data (if enabled) |
+
+---
+
+## Project Structure
+
+```
+your-project/
+├── mappings/
+│   ├── lookups/              # JSON lookup tables
+│   │   ├── gender-lookup.json
+│   │   ├── marital-status-lookup.json
+│   │   └── address-use-lookup.json
+│   ├── lookups-excel/        # Excel lookup workbooks
+│   │   ├── standard-terminology.xlsx
+│   │   └── custom-codes.xlsx
+│   ├── json/                 # JSON resource mappings
+│   │   ├── patient-json-to-fhir.json
+│   │   ├── patient-fhir-to-json.json
+│   │   └── encounter-json-to-fhir.json
+│   ├── excel/                # Excel resource mappings
+│   │   ├── epic-mappings.xlsx
+│   │   └── cerner-mappings.xlsx
+│   └── excel-generated/      # Auto-generated (cleaned on load)
+└── src/
+    └── main/
+        └── java/
+            └── com/example/
+                └── FhirTransformService.java
+```
+
+**File Naming:**
+- IDs must be unique across all files
+- Use descriptive names: `patient-json-to-fhir-v1.json`
+- Excel sheets: `"Patient - JSON to FHIR"`
+
+---
+
+## Validation & Security
+
+### Startup Validation
+
+Validates:
+- **FHIR Resource Types**: Valid FHIR resources (Patient, Observation, etc.)
+- **FHIR Paths**: First-level fields exist in FHIR structure
+- **Data Types**: Compatible with FHIR expectations
+- **Expressions**: Syntactically valid JEXL
+- **Lookup Tables**: All referenced lookups exist
+- **Uniqueness**: No duplicate mapping IDs
+
+**Validation Modes:**
+
+```java
+// Strict mode (default) - throws on errors
+MappingLoader loader = new MappingLoader("./mappings", true);
+
+// Lenient mode - logs errors but continues
+MappingLoader loader = new MappingLoader("./mappings", false);
+```
+
+### Security Scanning
+
+Scans all expressions for dangerous patterns:
+
+**CRITICAL (always fails):**
+- Runtime execution
+- Process creation
+- Script engines
+
+**HIGH (logged):**
+- Reflection
+- Network I/O
+- Database access
+
+**MEDIUM/LOW (warnings):**
+- File I/O
+- Threading
+
+Example output:
+
+```
+Security Validation Report:
+
+CRITICAL (0):
+
+HIGH (0):
+
+MEDIUM (1):
+  - Mapping: patient-json-to-fhir-v1, Field: custom-field (transform)
+    File system access
+    Expression: new File('/tmp/data')
+
+Total issues: 1
+```
+
+---
+
+## REST API Integration Example
+
+```java
+@RestController
+@RequestMapping("/api/fhir")
+public class FhirTransformController {
+    
+    @Autowired private TransformationEngine engine;
+    @Autowired private MappingRegistry registry;
+    
+    @PostMapping("/patient")
+    public ResponseEntity<PatientResponse> createPatient(
+            @RequestBody PatientDTO dto,
+            @RequestHeader(value = "X-Trace-Id", required = false) String traceId,
+            @RequestHeader(value = "X-Enable-Trace", required = false) boolean enableTrace) {
+        
+        TransformationContext ctx = buildContext();
+        
+        // Enable tracing if requested
+        if (enableTrace) {
+            ctx.enableTracing(traceId != null ? traceId : UUID.randomUUID().toString());
+        }
+        
+        ResourceMapping mapping = registry.findById("patient-json-to-fhir-v1");
+        Patient patient = engine.jsonToFhirResource(dto, mapping, ctx, Patient.class);
+        
+        PatientResponse response = new PatientResponse(patient);
+        
+        // Include trace if enabled
+        if (ctx.isEnableTracing()) {
+            response.setTrace(ctx.getTrace());
+        }
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    @GetMapping("/patient/{id}")
+    public PatientDTO getPatient(@PathVariable String id) throws Exception {
+        // Fetch from FHIR server
+        Patient fhirPatient = fhirClient.read()
+            .resource(Patient.class)
+            .withId(id)
+            .execute();
+        
+        TransformationContext ctx = buildContext();
+        ResourceMapping mapping = registry.findById("patient-fhir-to-json-v1");
+        
+        return engine.fhirToJsonObject(fhirPatient, mapping, ctx, PatientDTO.class);
+    }
+    
+    @PostMapping("/batch/patients")
+    public ResponseEntity<BatchResponse> batchTransform(
+            @RequestBody List<PatientDTO> patients) {
+        
+        TransformationContext ctx = buildContext();
+        ResourceMapping mapping = registry.findById("patient-json-to-fhir-v1");
+        
+        List<Patient> results = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
+        
+        for (PatientDTO dto : patients) {
+            try {
+                Patient patient = engine.jsonToFhirResource(dto, mapping, ctx, Patient.class);
+                results.add(patient);
+            } catch (Exception e) {
+                errors.add("Patient " + dto.getPatientId() + ": " + e.getMessage());
+            }
+        }
+        
+        return ResponseEntity.ok(new BatchResponse(results, errors));
+    }
+    
+    private TransformationContext buildContext() {
+        TransformationContext ctx = new TransformationContext();
+        ctx.setOrganizationId(SecurityContextHolder.getContext().getOrganizationId());
+        ctx.getSettings().put("identifierSystem", configService.getIdentifierSystem());
+        return ctx;
+    }
 }
 ```
+
+---
+
+## Examples
+
+### Simple Patient Mapping
+
+**Input JSON:**
+```json
+{
+  "patientId": "P123",
+  "firstName": "John",
+  "lastName": "Doe",
+  "gender": "M"
+}
+```
+
+**Mapping:**
+```json
+{
+  "id": "patient-simple-v1",
+  "direction": "JSON_TO_FHIR",
+  "sourceType": "PatientDTO",
+  "targetType": "Patient",
+  "fieldMappings": [
+    {
+      "id": "patient-id",
+      "sourcePath": "patientId",
+      "targetPath": "identifier[0].value",
+      "required": true
+    },
+    {
+      "id": "patient-name-family",
+      "sourcePath": "lastName",
+      "targetPath": "name[0].family",
+      "required": true
+    },
+    {
+      "id": "patient-name-given",
+      "sourcePath": "firstName",
+      "targetPath": "name[0].given[0]",
+      "required": true
+    },
+    {
+      "id": "patient-gender",
+      "sourcePath": "gender",
+      "targetPath": "gender",
+      "lookupTable": "gender-lookup"
+    }
+  ]
+}
+```
+
+**Usage:**
+```java
+Patient patient = engine.jsonToFhirResource(jsonInput, mapping, context, Patient.class);
+```
+
+### Complex Mapping with Extensions
+
+**US Core Patient with Race/Ethnicity:**
+
+```json
+{
+  "id": "patient-race-extension",
+  "sourcePath": "race",
+  "targetPath": "extension[0].extension[0].valueCoding.code",
+  "condition": "race != null"
+},
+{
+  "id": "patient-race-system",
+  "targetPath": "extension[0].extension[0].valueCoding.system",
+  "defaultValue": "urn:oid:2.16.840.1.113883.6.238",
+  "condition": "race != null"
+},
+{
+  "id": "patient-race-url-inner",
+  "targetPath": "extension[0].extension[0].url",
+  "defaultValue": "ombCategory",
+  "condition": "race != null"
+},
+{
+  "id": "patient-race-url-outer",
+  "targetPath": "extension[0].url",
+  "defaultValue": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race",
+  "condition": "race != null"
+}
+```
+
+### Bidirectional Transformation
+
+**JSON → FHIR:**
+```java
+PatientDTO dto = new PatientDTO();
+dto.setPatientId("P123");
+dto.setFirstName("John");
+
+ResourceMapping jsonToFhir = registry.findById("patient-json-to-fhir-v1");
+Patient patient = engine.jsonToFhirResource(dto, jsonToFhir, context, Patient.class);
+```
+
+**FHIR → JSON:**
+```java
+ResourceMapping fhirToJson = registry.findById("patient-fhir-to-json-v1");
+PatientDTO dto = engine.fhirToJsonObject(patient, fhirToJson, context, PatientDTO.class);
+```
+
+---
+
+## Troubleshooting
+
+### Lookup table not found
+
+**Error:**
+```
+TransformationException: Lookup table not found: gender-lookup
+```
+
+**Solutions:**
+1. Check file exists: `mappings/lookups/gender-lookup.json`
+2. Verify ID in lookup file matches: `"id": "gender-lookup"`
+3. Check loader logs: `grep "Loaded lookup" application.log`
+
+### Invalid FHIR path
+
+**Error:**
+```
+[ERROR] Mapping: patient-v1, Field: custom-field: Invalid FHIR path 'customField'
+```
+
+**Solutions:**
+1. Verify field exists in FHIR resource
+2. Check spelling and case (FHIR is case-sensitive)
+3. Use HAPI FHIR documentation for valid paths
+
+### Expression evaluation failed
+
+**Error:**
+```
+ExpressionEvaluationException: Failed to evaluate: fn.uppercase(value)
+```
+
+**Solutions:**
+1. Check expression syntax
+2. Verify function exists: use `fn.` prefix
+3. Ensure value is not null: add condition `value != null`
+4. Test expression with simple values first
+
+### Context variable not resolved
+
+**Error:**
+```
+Expression evaluated to null: 'fn.concat('Organization/', $ctx.organizationId)'
+```
+
+**Solutions:**
+1. Check context is set: `context.setOrganizationId("org-123")`
+2. Verify $ctx prefix is used
+3. Check variable name spelling
+4. Enable tracing to see actual values
+
+### Type conversion issues
+
+**Error:**
+```
+Type conversion failed: cannot convert 'abc' to integer
+```
+
+**Solutions:**
+1. Verify source data type matches expected
+2. Add validation in source system
+3. Use transformExpression to convert
+4. Make field non-required if optional
+
+---
+
+## Building & Testing
+
+### Build
+
+```bash
+mvn clean install
+```
+
+### Run Examples
+
+```bash
+mvn exec:java -Dexec.mainClass="com.fhir.mapper.examples.ComplexRealTimeExample"
+```
+
+### Run Tests
+
+```bash
+mvn test
+```
+
+### Validate Mappings
+
+```bash
+java -jar fhir-mapper-cli.jar validate ./mappings
+```
+
+---
 
 ## Dependencies
 
@@ -984,64 +1212,99 @@ if (!result.isValid()) {
     <artifactId>commons-jexl3</artifactId>
     <version>3.3</version>
 </dependency>
+
+<!-- Apache POI for Excel -->
+<dependency>
+    <groupId>org.apache.poi</groupId>
+    <artifactId>poi-ooxml</artifactId>
+    <version>5.2.3</version>
+</dependency>
 ```
 
-## Building
+---
 
-```bash
-mvn clean install
+## Limitations
+
+### Current Limitations
+
+1. **Path Validation**: Only first-level fields validated against FHIR structure
+2. **Array Wildcards**: Cannot map "all elements" automatically (e.g., `addresses[*]`)
+3. **FHIRPath Queries**: Does not support complex FHIRPath (e.g., `name.where(use='official')`)
+4. **Circular References**: Not detected or handled
+
+### Workarounds
+
+**Array Mapping:**
+Specify each index explicitly:
+```json
+{"sourcePath": "addresses[0]", "targetPath": "address[0]"},
+{"sourcePath": "addresses[1]", "targetPath": "address[1]"}
 ```
 
-## Testing
-
-Run the example:
-```bash
-mvn exec:java -Dexec.mainClass="com.fhir.mapper.examples.ComplexRealTimeExample"
+**Complex Queries:**
+Use JEXL in transformExpression:
+```json
+{
+  "transformExpression": "addresses.stream().filter(a -> a.type == 'HOME').findFirst().orElse(null)"
+}
 ```
 
-## Troubleshooting
-
-### Common Issues
-
-**"Lookup table not found"**
-- Ensure lookup table JSON is in `mappings/lookups/` directory
-- Check `lookupTable` field references correct lookup `id`
-
-**"Invalid FHIR path"**
-- Verify path exists in FHIR resource structure
-- Check spelling and case sensitivity (FHIR is case-sensitive)
-
-**"Expression evaluation failed"**
-- Test expressions with simple values first
-- Check that variables are available in context
-- Use `fn.` prefix for built-in functions
-
-**"DataType mismatch"**
-- Ensure `dataType` matches expected FHIR type
-- Use compatible types (e.g., "string" works for "code", "id", "uri")
+---
 
 ## Contributing
 
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all tests pass
-5. Submit a pull request
+### Development Setup
 
-## License
+```bash
+# Clone repository
+git clone https://github.com/your-org/fhir-mapper-core.git
+cd fhir-mapper-core
 
-[Apache-2.0 license](http://www.apache.org/licenses/LICENSE-2.0)
+# Build
+mvn clean install
 
-## Support
+# Run tests
+mvn test
 
-For issues and questions:
-- GitHub Issues: [link](https://github.com/pradeepkk321/fhir-mapper/issues)
-- Documentation: [link]
-- Email: pradyskumar@gmail.com
+# Run examples
+mvn exec:java -Dexec.mainClass="com.fhir.mapper.examples.ComplexRealTimeExample"
+```
+
+### Code Style
+
+- Follow Google Java Style Guide
+- Use SLF4J for logging (no System.out)
+- Write tests for all new features
+- Update documentation
+
+### Pull Request Process
+
+1. Create feature branch: `feature/your-feature-name`
+2. Write tests (aim for >80% coverage)
+3. Update documentation
+4. Run full test suite
+5. Submit PR with description
+6. Address review comments
+
+---
+
+## License & Support
+
+### License
+
+Apache License 2.0
+
+Copyright 2025 Pradeep Kumara Krishnegowda
+
+### Support
+
+- 📖 **Documentation**: [Wiki](https://github.com/your-org/fhir-mapper-core/wiki)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/your-org/fhir-mapper-core/discussions)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/your-org/fhir-mapper-core/issues)
+- 📧 **Email**: support@example.com
 
 ---
 
 **Version**: 1.0.0-SNAPSHOT  
 **FHIR Version**: R4 (R5 support available)  
-**Last Updated**: 25 Nov 2025
+**Last Updated**: November 2025
