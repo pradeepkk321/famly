@@ -18,7 +18,7 @@ FAMLY eliminates the need to write Java transformation code for each FHIR resour
 - **Code lookups** for terminology mapping with multi-system support
 - **Conditional field mapping** with context variables
 - **Transformation tracing** for debugging and monitoring
-- **Mapping & Lookup Validation** against HAPI FHIR structure definitions during loading
+- **Mapping & Lookup Validation** including FHIR Path against HAPI FHIR structure definitions during loading
 - **Security scanning** to prevent malicious expressions
 
 ---
