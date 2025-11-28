@@ -1,6 +1,6 @@
-# FHIR Mapper
+# FAMLY — FHIR Automated Mapping LibrarY
 
-A declarative, JSON/Excel-driven transformation framework for converting between custom JSON/POJO formats and HL7 FHIR resources.
+A declarative, Excel/JSON-driven engine for transforming data to and from FHIR — automatically.
 
 [![Maven](https://img.shields.io/badge/Maven-3.8+-blue.svg)](https://maven.apache.org/)
 [![Java](https://img.shields.io/badge/Java-17+-orange.svg)](https://www.oracle.com/java/)
