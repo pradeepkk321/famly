@@ -5,13 +5,13 @@
          http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.fhir.mapper</groupId>
-    <artifactId>fhir-mapper-core</artifactId>
+    <groupId>io.famly.mapper</groupId>
+    <artifactId>famly-core</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>FHIR Mapper Core</name>
-    <description>Core library for JSON to FHIR transformation based on Excel/JSON mappings</description>
+    <name>FAMLY Core</name>
+    <description>FAMLY(FHIR Automated Mapping LibrarY) - A declarative, Excel/JSON-driven engine for transforming data to and from FHIR — automatically.</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

@@ -10,7 +10,7 @@ A declarative, Excel/JSON-driven engine for transforming data to and from FHIR �
 
 ## Overview
 
-FHIR Mapper Core eliminates the need to write Java transformation code for each FHIR resource mapping. Instead, you define mappings in JSON or Excel configuration files with support for:
+FAMLY eliminates the need to write Java transformation code for each FHIR resource mapping. Instead, you define mappings in JSON or Excel configuration files with support for:
 
 - **Bidirectional transformations** (JSON ↔ FHIR)
 - **Excel-based configuration** for business users (mappings and lookup tables)
@@ -18,7 +18,7 @@ FHIR Mapper Core eliminates the need to write Java transformation code for each 
 - **Code lookups** for terminology mapping with multi-system support
 - **Conditional field mapping** with context variables
 - **Transformation tracing** for debugging and monitoring
-- **Validation** against HAPI FHIR structure definitions
+- **Mapping & Lookup Validation** against HAPI FHIR structure definitions during loading
 - **Security scanning** to prevent malicious expressions
 
 ---
@@ -29,8 +29,8 @@ FHIR Mapper Core eliminates the need to write Java transformation code for each 
 
 ```xml
 <dependency>
-    <groupId>com.fhir.mapper</groupId>
-    <artifactId>fhir-mapper-core</artifactId>
+    <groupId>io.famly.mapper</groupId>
+    <artifactId>famly-core</artifactId>
     <version>1.0.0-SNAPSHOT</version>
 </dependency>
 ```
@@ -852,7 +852,7 @@ your-project/
 
 Validates:
 - **FHIR Resource Types**: Valid FHIR resources (Patient, Observation, etc.)
-- **FHIR Paths**: First-level fields exist in FHIR structure
+- **FHIR Paths**: FHIR Path in a Feild Mapping is a valid and exist in FHIR structure using HAPI structures
 - **Data Types**: Compatible with FHIR expectations
 - **Expressions**: Syntactically valid JEXL
 - **Lookup Tables**: All referenced lookups exist
@@ -1172,7 +1172,7 @@ mvn clean install
 ### Run Examples
 
 ```bash
-mvn exec:java -Dexec.mainClass="com.fhir.mapper.examples.ComplexRealTimeExample"
+mvn exec:java -Dexec.mainClass="io.famly.mapper.core.examples.ComplexRealTimeExample"
 ```
 
 ### Run Tests
@@ -1266,7 +1266,7 @@ mvn clean install
 mvn test
 
 # Run examples
-mvn exec:java -Dexec.mainClass="com.fhir.mapper.examples.ComplexRealTimeExample"
+mvn exec:java -Dexec.mainClass="io.famly.mapper.core.examples;.ComplexRealTimeExample"
 ```
 
 ### Code Style
@@ -1297,9 +1297,9 @@ Copyright 2025 Pradeep Kumara Krishnegowda
 
 ### Support
 
-- 📖 **Documentation**: [Wiki](https://github.com/pradeepkk321/fhir-mapper/wiki)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/your-org/fhir-mapper-core/discussions)
-- 🐛 **Issues**: [GitHub Issues](https://github.com/pradeepkk321/fhir-mapper/issues)
+- 📖 **Documentation**: [Wiki](https://github.com/pradeepkk321/famly/wiki)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/pradeepkk321/famly/discussions)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/pradeepkk321/famly/issues)
 - 📧 **Email**: pradyskumar@gmail.com
 
 ---

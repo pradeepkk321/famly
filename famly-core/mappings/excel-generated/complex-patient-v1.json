@@ -10,7 +10,7 @@
     "sourcePath" : "patientId",
     "targetPath" : "identifier[0].value",
     "dataType" : "string",
-    "transformExpression" : "Runtime.getRuntime()",
+    "transformExpression" : null,
     "condition" : null,
     "validator" : null,
     "required" : true,

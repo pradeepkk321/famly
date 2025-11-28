@@ -2,7 +2,7 @@
 /.settings
 /*.project
 /target
-/fhir-mapper-core/*.project
-/fhir-mapper-core/.settings
-/fhir-mapper-core/target
-/fhir-mapper-core/*.classpath
+/famly-core/*.project
+/famly-core/.settings
+/famly-core/target
+/famly-core/*.classpath
