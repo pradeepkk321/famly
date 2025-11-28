@@ -1,0 +1,14 @@
+{
+  "id": "interpretation-lookup",
+  "name": "Interpretation Lookup",
+  "sourceSystem": "internal",
+  "defaultTargetSystem": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+  "bidirectional": false,
+  "mappings": [
+    {"sourceCode": "normal", "targetCode": "N", "display": "Normal"},
+    {"sourceCode": "high", "targetCode": "H", "display": "High"},
+    {"sourceCode": "low", "targetCode": "L", "display": "Low"},
+    {"sourceCode": "critical-high", "targetCode": "HH", "display": "Critical high"},
+    {"sourceCode": "critical-low", "targetCode": "LL", "display": "Critical low"}
+  ]
+}

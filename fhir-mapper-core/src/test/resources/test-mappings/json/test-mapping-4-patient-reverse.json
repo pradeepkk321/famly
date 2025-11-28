@@ -1,0 +1,134 @@
+{
+  "id": "patient-fhir-to-json-v1",
+  "name": "Patient FHIR to JSON",
+  "version": "1.0.0",
+  "direction": "FHIR_TO_JSON",
+  "sourceType": "Patient",
+  "targetType": "PatientDTO",
+  "fieldMappings": [
+    {
+      "id": "patient-id-reverse",
+      "sourcePath": "identifier[0].value",
+      "targetPath": "patientId",
+      "required": true
+    },
+    {
+      "id": "patient-ssn-reverse",
+      "sourcePath": "identifier[1].value",
+      "targetPath": "ssn",
+      "transformExpression": "value != null && value.length() == 9 ? fn.concat(value.substring(0,3), '-', value.substring(3,5), '-', value.substring(5,9)) : value"
+    },
+    {
+      "id": "patient-firstname-reverse",
+      "sourcePath": "name[0].given[0]",
+      "targetPath": "firstName",
+      "required": true
+    },
+    {
+      "id": "patient-middlename-reverse",
+      "sourcePath": "name[0].given[1]",
+      "targetPath": "middleName"
+    },
+    {
+      "id": "patient-lastname-reverse",
+      "sourcePath": "name[0].family",
+      "targetPath": "lastName",
+      "required": true
+    },
+    {
+      "id": "patient-suffix-reverse",
+      "sourcePath": "name[0].suffix[0]",
+      "targetPath": "suffix"
+    },
+    {
+      "id": "patient-gender-reverse",
+      "sourcePath": "gender",
+      "targetPath": "gender",
+      "lookupTable": "gender-lookup-reverse"
+    },
+    {
+      "id": "patient-birthdate-reverse",
+      "sourcePath": "birthDate",
+      "targetPath": "dateOfBirth",
+      "dataType": "date"
+    },
+    {
+      "id": "patient-marital-status-reverse",
+      "sourcePath": "maritalStatus.coding[0].code",
+      "targetPath": "maritalStatus",
+      "lookupTable": "marital-status-lookup-reverse"
+    },
+    {
+      "id": "patient-deceased-reverse",
+      "sourcePath": "deceasedBoolean",
+      "targetPath": "isDeceased",
+      "dataType": "boolean"
+    },
+    {
+      "id": "patient-email-reverse",
+      "sourcePath": "telecom[0].value",
+      "targetPath": "emailAddress",
+      "condition": "telecom != null && telecom.size() > 0 && telecom[0].system == 'email'"
+    },
+    {
+      "id": "patient-phone-reverse",
+      "sourcePath": "telecom[1].value",
+      "targetPath": "mobilePhone",
+      "condition": "telecom != null && telecom.size() > 1"
+    },
+    {
+      "id": "patient-address-line1-reverse",
+      "sourcePath": "address[0].line[0]",
+      "targetPath": "homeAddress.line1",
+      "condition": "address != null && address.size() > 0"
+    },
+    {
+      "id": "patient-address-line2-reverse",
+      "sourcePath": "address[0].line[1]",
+      "targetPath": "homeAddress.line2",
+      "condition": "address != null && address.size() > 0 && address[0].line.size() > 1"
+    },
+    {
+      "id": "patient-address-city-reverse",
+      "sourcePath": "address[0].city",
+      "targetPath": "homeAddress.city",
+      "condition": "address != null && address.size() > 0"
+    },
+    {
+      "id": "patient-address-state-reverse",
+      "sourcePath": "address[0].state",
+      "targetPath": "homeAddress.state",
+      "condition": "address != null && address.size() > 0"
+    },
+    {
+      "id": "patient-address-zip-reverse",
+      "sourcePath": "address[0].postalCode",
+      "targetPath": "homeAddress.zip",
+      "condition": "address != null && address.size() > 0"
+    },
+    {
+      "id": "patient-address-country-reverse",
+      "sourcePath": "address[0].country",
+      "targetPath": "homeAddress.country",
+      "condition": "address != null && address.size() > 0"
+    },
+    {
+      "id": "patient-race-reverse",
+      "sourcePath": "extension[0].extension[0].valueCoding.code",
+      "targetPath": "race",
+      "condition": "extension != null && extension.size() > 0"
+    },
+    {
+      "id": "patient-ethnicity-reverse",
+      "sourcePath": "extension[1].extension[0].valueCoding.code",
+      "targetPath": "ethnicity",
+      "condition": "extension != null && extension.size() > 1"
+    },
+    {
+      "id": "patient-org-id-reverse",
+      "sourcePath": "managingOrganization.reference",
+      "targetPath": "organizationId",
+      "transformExpression": "value != null && value.startsWith('Organization/') ? value.substring(13) : value"
+    }
+  ]
+}

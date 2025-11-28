@@ -1,0 +1,14 @@
+{
+  "id": "medication-request-status-lookup",
+  "name": "MedicationRequest Status Lookup",
+  "sourceSystem": "internal",
+  "defaultTargetSystem": "http://hl7.org/fhir/CodeSystem/medicationrequest-status",
+  "bidirectional": false,
+  "mappings": [
+    {"sourceCode": "active", "targetCode": "active", "display": "Active"},
+    {"sourceCode": "on-hold", "targetCode": "on-hold", "display": "On Hold"},
+    {"sourceCode": "cancelled", "targetCode": "cancelled", "display": "Cancelled"},
+    {"sourceCode": "completed", "targetCode": "completed", "display": "Completed"},
+    {"sourceCode": "entered-in-error", "targetCode": "entered-in-error", "display": "Entered in Error"}
+  ]
+}

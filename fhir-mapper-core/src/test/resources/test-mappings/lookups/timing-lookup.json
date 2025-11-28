@@ -1,0 +1,13 @@
+{
+  "id": "timing-lookup",
+  "name": "Timing Lookup",
+  "sourceSystem": "internal",
+  "defaultTargetSystem": "http://terminology.hl7.org/CodeSystem/v3-GTSAbbreviation",
+  "bidirectional": false,
+  "mappings": [
+    {"sourceCode": "daily", "targetCode": "QD", "display": "Daily"},
+    {"sourceCode": "twice-daily", "targetCode": "BID", "display": "Twice daily"},
+    {"sourceCode": "three-times-daily", "targetCode": "TID", "display": "Three times daily"},
+    {"sourceCode": "four-times-daily", "targetCode": "QID", "display": "Four times daily"}
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "observation-category-lookup",
+  "name": "Observation Category Lookup",
+  "sourceSystem": "internal",
+  "defaultTargetSystem": "http://terminology.hl7.org/CodeSystem/observation-category",
+  "bidirectional": false,
+  "mappings": [
+    {"sourceCode": "vital-signs", "targetCode": "vital-signs", "display": "Vital Signs"},
+    {"sourceCode": "laboratory", "targetCode": "laboratory", "display": "Laboratory"},
+    {"sourceCode": "imaging", "targetCode": "imaging", "display": "Imaging"},
+    {"sourceCode": "exam", "targetCode": "exam", "display": "Exam"},
+    {"sourceCode": "social-history", "targetCode": "social-history", "display": "Social History"}
+  ]
+}

@@ -1,0 +1,34 @@
+{
+	"id": "marital-status-lookup",
+	"name": "Marital Status Lookup",
+	"sourceSystem": "internal",
+	"defaultTargetSystem": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+	"bidirectional": false,
+	"mappings": [
+		{
+			"sourceCode": "S",
+			"targetCode": "S",
+			"display": "Never Married"
+		},
+		{
+			"sourceCode": "M",
+			"targetCode": "M",
+			"display": "Married"
+		},
+		{
+			"sourceCode": "D",
+			"targetCode": "D",
+			"display": "Divorced"
+		},
+		{
+			"sourceCode": "W",
+			"targetCode": "W",
+			"display": "Widowed"
+		},
+		{
+			"sourceCode": "P",
+			"targetCode": "T",
+			"display": "Domestic partner"
+		}
+	]
+}
