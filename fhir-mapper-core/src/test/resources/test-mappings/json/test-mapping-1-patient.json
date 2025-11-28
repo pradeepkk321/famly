@@ -1,0 +1,272 @@
+{
+  "id": "patient-json-to-fhir-complex-v1",
+  "name": "Complex Patient JSON to FHIR",
+  "version": "1.0.0",
+  "direction": "JSON_TO_FHIR",
+  "sourceType": "PatientDTO",
+  "targetType": "Patient",
+  "fieldMappings": [
+    {
+      "id": "patient-id",
+      "sourcePath": "patientId",
+      "targetPath": "identifier[0].value",
+      "dataType": "string",
+      "required": true
+    },
+    {
+      "id": "patient-id-system",
+      "targetPath": "identifier[0].system",
+      "dataType": "uri",
+      "defaultValue": "$ctx.settings['identifierSystem']",
+      "required": true
+    },
+    {
+      "id": "patient-id-type",
+      "targetPath": "identifier[0].type.coding[0].code",
+      "defaultValue": "MR"
+    },
+    {
+      "id": "patient-id-type-system",
+      "targetPath": "identifier[0].type.coding[0].system",
+      "defaultValue": "http://terminology.hl7.org/CodeSystem/v2-0203"
+    },
+    {
+      "id": "patient-ssn",
+      "sourcePath": "ssn",
+      "targetPath": "identifier[1].value",
+      "transformExpression": "fn.replace(value, '-', '')",
+      "condition": "ssn != null && ssn != ''"
+    },
+    {
+      "id": "patient-ssn-system",
+      "targetPath": "identifier[1].system",
+      "defaultValue": "http://hl7.org/fhir/sid/us-ssn",
+      "condition": "ssn != null && ssn != ''"
+    },
+    {
+      "id": "patient-ssn-type",
+      "targetPath": "identifier[1].type.coding[0].code",
+      "defaultValue": "SS",
+      "condition": "ssn != null && ssn != ''"
+    },
+    {
+      "id": "patient-name-use",
+      "targetPath": "name[0].use",
+      "defaultValue": "official"
+    },
+    {
+      "id": "patient-name-family",
+      "sourcePath": "lastName",
+      "targetPath": "name[0].family",
+      "required": true
+    },
+    {
+      "id": "patient-name-given-first",
+      "sourcePath": "firstName",
+      "targetPath": "name[0].given[0]",
+      "required": true
+    },
+    {
+      "id": "patient-name-given-middle",
+      "sourcePath": "middleName",
+      "targetPath": "name[0].given[1]",
+      "condition": "middleName != null && middleName != ''"
+    },
+    {
+      "id": "patient-name-suffix",
+      "sourcePath": "suffix",
+      "targetPath": "name[0].suffix[0]",
+      "condition": "suffix != null && suffix != ''"
+    },
+    {
+      "id": "patient-gender",
+      "sourcePath": "gender",
+      "targetPath": "gender",
+      "dataType": "code",
+      "lookupTable": "gender-lookup",
+      "required": true
+    },
+    {
+      "id": "patient-birthdate",
+      "sourcePath": "dateOfBirth",
+      "targetPath": "birthDate",
+      "dataType": "date"
+    },
+    {
+      "id": "patient-marital-status-code",
+      "sourcePath": "maritalStatus",
+      "targetPath": "maritalStatus.coding[0].code",
+      "lookupTable": "marital-status-lookup"
+    },
+    {
+      "id": "patient-marital-status-system",
+      "targetPath": "maritalStatus.coding[0].system",
+      "defaultValue": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+      "condition": "maritalStatus != null"
+    },
+    {
+      "id": "patient-deceased",
+      "sourcePath": "isDeceased",
+      "targetPath": "deceasedBoolean",
+      "dataType": "boolean"
+    },
+    {
+      "id": "patient-email-system",
+      "targetPath": "telecom[0].system",
+      "defaultValue": "email",
+      "condition": "emailAddress != null"
+    },
+    {
+      "id": "patient-email-value",
+      "sourcePath": "emailAddress",
+      "targetPath": "telecom[0].value",
+      "condition": "emailAddress != null"
+    },
+    {
+      "id": "patient-email-use",
+      "targetPath": "telecom[0].use",
+      "defaultValue": "home",
+      "condition": "emailAddress != null"
+    },
+    {
+      "id": "patient-phone-system",
+      "targetPath": "telecom[1].system",
+      "defaultValue": "phone",
+      "condition": "mobilePhone != null"
+    },
+    {
+      "id": "patient-phone-value",
+      "sourcePath": "mobilePhone",
+      "targetPath": "telecom[1].value",
+      "condition": "mobilePhone != null"
+    },
+    {
+      "id": "patient-phone-use",
+      "targetPath": "telecom[1].use",
+      "defaultValue": "mobile",
+      "condition": "mobilePhone != null"
+    },
+    {
+      "id": "patient-address-use",
+      "targetPath": "address[0].use",
+      "defaultValue": "home",
+      "condition": "homeAddress != null"
+    },
+    {
+      "id": "patient-address-line1",
+      "sourcePath": "homeAddress.line1",
+      "targetPath": "address[0].line[0]",
+      "condition": "homeAddress != null"
+    },
+    {
+      "id": "patient-address-line2",
+      "sourcePath": "homeAddress.line2",
+      "targetPath": "address[0].line[1]",
+      "condition": "homeAddress != null && homeAddress.line2 != null"
+    },
+    {
+      "id": "patient-address-city",
+      "sourcePath": "homeAddress.city",
+      "targetPath": "address[0].city",
+      "condition": "homeAddress != null"
+    },
+    {
+      "id": "patient-address-state",
+      "sourcePath": "homeAddress.state",
+      "targetPath": "address[0].state",
+      "condition": "homeAddress != null"
+    },
+    {
+      "id": "patient-address-zip",
+      "sourcePath": "homeAddress.zip",
+      "targetPath": "address[0].postalCode",
+      "condition": "homeAddress != null"
+    },
+    {
+      "id": "patient-address-country",
+      "sourcePath": "homeAddress.country",
+      "targetPath": "address[0].country",
+      "condition": "homeAddress != null"
+    },
+    {
+      "id": "patient-race-code",
+      "sourcePath": "race",
+      "targetPath": "extension[0].extension[0].valueCoding.code",
+      "condition": "race != null"
+    },
+    {
+      "id": "patient-race-system",
+      "targetPath": "extension[0].extension[0].valueCoding.system",
+      "defaultValue": "urn:oid:2.16.840.1.113883.6.238",
+      "condition": "race != null"
+    },
+    {
+      "id": "patient-race-url-inner",
+      "targetPath": "extension[0].extension[0].url",
+      "defaultValue": "ombCategory",
+      "condition": "race != null"
+    },
+    {
+      "id": "patient-race-text",
+      "sourcePath": "race",
+      "targetPath": "extension[0].extension[1].valueString",
+      "lookupTable": "race-text-lookup",
+      "condition": "race != null"
+    },
+    {
+      "id": "patient-race-text-url",
+      "targetPath": "extension[0].extension[1].url",
+      "defaultValue": "text",
+      "condition": "race != null"
+    },
+    {
+      "id": "patient-race-url-outer",
+      "targetPath": "extension[0].url",
+      "defaultValue": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race",
+      "condition": "race != null"
+    },
+    {
+      "id": "patient-ethnicity-code",
+      "sourcePath": "ethnicity",
+      "targetPath": "extension[1].extension[0].valueCoding.code",
+      "condition": "ethnicity != null"
+    },
+    {
+      "id": "patient-ethnicity-system",
+      "targetPath": "extension[1].extension[0].valueCoding.system",
+      "defaultValue": "urn:oid:2.16.840.1.113883.6.238",
+      "condition": "ethnicity != null"
+    },
+    {
+      "id": "patient-ethnicity-url-inner",
+      "targetPath": "extension[1].extension[0].url",
+      "defaultValue": "ombCategory",
+      "condition": "ethnicity != null"
+    },
+    {
+      "id": "patient-ethnicity-text",
+      "sourcePath": "ethnicity",
+      "targetPath": "extension[1].extension[1].valueString",
+      "lookupTable": "ethnicity-text-lookup",
+      "condition": "ethnicity != null"
+    },
+    {
+      "id": "patient-ethnicity-text-url",
+      "targetPath": "extension[1].extension[1].url",
+      "defaultValue": "text",
+      "condition": "ethnicity != null"
+    },
+    {
+      "id": "patient-ethnicity-url-outer",
+      "targetPath": "extension[1].url",
+      "defaultValue": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity",
+      "condition": "ethnicity != null"
+    },
+    {
+      "id": "patient-managing-org",
+      "targetPath": "managingOrganization.reference",
+      "transformExpression": "fn.concat('Organization/', $ctx.organizationId)",
+      "condition": "$ctx.organizationId != null"
+    }
+  ]
+}

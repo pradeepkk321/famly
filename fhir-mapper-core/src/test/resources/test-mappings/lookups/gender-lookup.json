@@ -1,0 +1,29 @@
+{
+	"id": "gender-lookup",
+	"name": "Gender Code Mapping (Internal to FHIR)",
+	"sourceSystem": "internal",
+	"defaultTargetSystem": "http://hl7.org/fhir/administrative-gender",
+	"bidirectional": false,
+	"mappings": [
+		{
+			"sourceCode": "M",
+			"targetCode": "male",
+			"display": "Male"
+		},
+		{
+			"sourceCode": "F",
+			"targetCode": "female",
+			"display": "Female"
+		},
+		{
+			"sourceCode": "O",
+			"targetCode": "other",
+			"display": "Other"
+		},
+		{
+			"sourceCode": "U",
+			"targetCode": "unknown",
+			"display": "Unknown"
+		}
+	]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "medication-request-priority-lookup",
+  "name": "MedicationRequest Priority Lookup",
+  "sourceSystem": "internal",
+  "defaultTargetSystem": "http://hl7.org/fhir/request-priority",
+  "bidirectional": false,
+  "mappings": [
+    {"sourceCode": "routine", "targetCode": "routine", "display": "Routine"},
+    {"sourceCode": "urgent", "targetCode": "urgent", "display": "Urgent"},
+    {"sourceCode": "asap", "targetCode": "asap", "display": "ASAP"},
+    {"sourceCode": "stat", "targetCode": "stat", "display": "STAT"}
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "encounter-status-lookup-reverse",
+  "name": "Encounter Status Reverse Lookup",
+  "sourceSystem": "http://hl7.org/fhir/encounter-status",
+  "defaultTargetSystem": "internal",
+  "bidirectional": false,
+  "mappings": [
+    {"sourceCode": "planned", "targetCode": "planned", "display": "Planned"},
+    {"sourceCode": "arrived", "targetCode": "arrived", "display": "Arrived"},
+    {"sourceCode": "in-progress", "targetCode": "in-progress", "display": "In Progress"},
+    {"sourceCode": "finished", "targetCode": "finished", "display": "Finished"},
+    {"sourceCode": "cancelled", "targetCode": "cancelled", "display": "Cancelled"}
+  ]
+}

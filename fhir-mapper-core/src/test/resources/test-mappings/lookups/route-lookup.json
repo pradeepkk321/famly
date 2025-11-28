@@ -1,0 +1,13 @@
+{
+  "id": "route-lookup",
+  "name": "Route Lookup",
+  "sourceSystem": "internal",
+  "defaultTargetSystem": "http://snomed.info/sct",
+  "bidirectional": false,
+  "mappings": [
+    {"sourceCode": "oral", "targetCode": "26643006", "display": "Oral"},
+    {"sourceCode": "iv", "targetCode": "47625008", "display": "Intravenous"},
+    {"sourceCode": "im", "targetCode": "78421000", "display": "Intramuscular"},
+    {"sourceCode": "topical", "targetCode": "6064005", "display": "Topical"}
+  ]
+}

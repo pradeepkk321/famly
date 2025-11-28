@@ -1,0 +1,191 @@
+{
+  "id": "observation-json-to-fhir-v1",
+  "name": "Observation JSON to FHIR",
+  "version": "1.0.0",
+  "direction": "JSON_TO_FHIR",
+  "sourceType": "ObservationDTO",
+  "targetType": "Observation",
+  "fieldMappings": [
+    {
+      "id": "obs-id",
+      "sourcePath": "observationId",
+      "targetPath": "identifier[0].value",
+      "dataType": "string",
+      "required": true
+    },
+    {
+      "id": "obs-id-system",
+      "targetPath": "identifier[0].system",
+      "defaultValue": "http://hospital.org/observations",
+      "required": true
+    },
+    {
+      "id": "obs-status",
+      "sourcePath": "status",
+      "targetPath": "status",
+      "dataType": "code",
+      "lookupTable": "observation-status-lookup",
+      "required": true
+    },
+    {
+      "id": "obs-category-code",
+      "sourcePath": "category",
+      "targetPath": "category[0].coding[0].code",
+      "lookupTable": "observation-category-lookup"
+    },
+    {
+      "id": "obs-category-system",
+      "targetPath": "category[0].coding[0].system",
+      "defaultValue": "http://terminology.hl7.org/CodeSystem/observation-category",
+      "condition": "category != null"
+    },
+    {
+      "id": "obs-code-code",
+      "sourcePath": "code",
+      "targetPath": "code.coding[0].code",
+      "required": true
+    },
+    {
+      "id": "obs-code-system",
+      "targetPath": "code.coding[0].system",
+      "defaultValue": "http://loinc.org",
+      "required": true
+    },
+    {
+      "id": "obs-code-display",
+      "sourcePath": "codeDisplay",
+      "targetPath": "code.coding[0].display"
+    },
+    {
+      "id": "obs-subject",
+      "sourcePath": "patientId",
+      "targetPath": "subject.reference",
+      "transformExpression": "fn.concat('Patient/', value)",
+      "required": true
+    },
+    {
+      "id": "obs-encounter",
+      "sourcePath": "encounterId",
+      "targetPath": "encounter.reference",
+      "transformExpression": "fn.concat('Encounter/', value)",
+      "condition": "encounterId != null"
+    },
+    {
+      "id": "obs-effective-datetime",
+      "sourcePath": "effectiveDateTime",
+      "targetPath": "effectiveDateTime",
+      "dataType": "dateTime"
+    },
+    {
+      "id": "obs-component-systolic-code-code",
+      "targetPath": "component[0].code.coding[0].code",
+      "defaultValue": "8480-6",
+      "condition": "systolicValue != null"
+    },
+    {
+      "id": "obs-component-systolic-code-system",
+      "targetPath": "component[0].code.coding[0].system",
+      "defaultValue": "http://loinc.org",
+      "condition": "systolicValue != null"
+    },
+    {
+      "id": "obs-component-systolic-code-display",
+      "targetPath": "component[0].code.coding[0].display",
+      "defaultValue": "Systolic blood pressure",
+      "condition": "systolicValue != null"
+    },
+    {
+      "id": "obs-component-systolic-value",
+      "sourcePath": "systolicValue",
+      "targetPath": "component[0].valueQuantity.value",
+      "dataType": "decimal",
+      "condition": "systolicValue != null"
+    },
+    {
+      "id": "obs-component-systolic-unit",
+      "sourcePath": "systolicUnit",
+      "targetPath": "component[0].valueQuantity.unit",
+      "condition": "systolicValue != null"
+    },
+    {
+      "id": "obs-component-systolic-system",
+      "targetPath": "component[0].valueQuantity.system",
+      "defaultValue": "http://unitsofmeasure.org",
+      "condition": "systolicValue != null"
+    },
+    {
+      "id": "obs-component-systolic-code-ucum",
+      "sourcePath": "systolicUnit",
+      "targetPath": "component[0].valueQuantity.code",
+      "condition": "systolicValue != null"
+    },
+    {
+      "id": "obs-component-diastolic-code-code",
+      "targetPath": "component[1].code.coding[0].code",
+      "defaultValue": "8462-4",
+      "condition": "diastolicValue != null"
+    },
+    {
+      "id": "obs-component-diastolic-code-system",
+      "targetPath": "component[1].code.coding[0].system",
+      "defaultValue": "http://loinc.org",
+      "condition": "diastolicValue != null"
+    },
+    {
+      "id": "obs-component-diastolic-code-display",
+      "targetPath": "component[1].code.coding[0].display",
+      "defaultValue": "Diastolic blood pressure",
+      "condition": "diastolicValue != null"
+    },
+    {
+      "id": "obs-component-diastolic-value",
+      "sourcePath": "diastolicValue",
+      "targetPath": "component[1].valueQuantity.value",
+      "dataType": "decimal",
+      "condition": "diastolicValue != null"
+    },
+    {
+      "id": "obs-component-diastolic-unit",
+      "sourcePath": "diastolicUnit",
+      "targetPath": "component[1].valueQuantity.unit",
+      "condition": "diastolicValue != null"
+    },
+    {
+      "id": "obs-component-diastolic-system",
+      "targetPath": "component[1].valueQuantity.system",
+      "defaultValue": "http://unitsofmeasure.org",
+      "condition": "diastolicValue != null"
+    },
+    {
+      "id": "obs-component-diastolic-code-ucum",
+      "sourcePath": "diastolicUnit",
+      "targetPath": "component[1].valueQuantity.code",
+      "condition": "diastolicValue != null"
+    },
+    {
+      "id": "obs-interpretation-code",
+      "sourcePath": "interpretation",
+      "targetPath": "interpretation[0].coding[0].code",
+      "lookupTable": "interpretation-lookup",
+      "condition": "interpretation != null"
+    },
+    {
+      "id": "obs-interpretation-system",
+      "targetPath": "interpretation[0].coding[0].system",
+      "defaultValue": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+      "condition": "interpretation != null"
+    },
+    {
+      "id": "obs-performer",
+      "sourcePath": "performerId",
+      "targetPath": "performer[0].reference",
+      "condition": "performerId != null"
+    },
+    {
+      "id": "obs-note",
+      "sourcePath": "note",
+      "targetPath": "note[0].text",
+      "condition": "note != null"
+    }
+  ]
+}

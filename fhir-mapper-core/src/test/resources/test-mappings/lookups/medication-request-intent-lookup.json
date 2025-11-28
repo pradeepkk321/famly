@@ -1,0 +1,13 @@
+{
+  "id": "medication-request-intent-lookup",
+  "name": "MedicationRequest Intent Lookup",
+  "sourceSystem": "internal",
+  "defaultTargetSystem": "http://hl7.org/fhir/CodeSystem/medicationrequest-intent",
+  "bidirectional": false,
+  "mappings": [
+    {"sourceCode": "proposal", "targetCode": "proposal", "display": "Proposal"},
+    {"sourceCode": "plan", "targetCode": "plan", "display": "Plan"},
+    {"sourceCode": "order", "targetCode": "order", "display": "Order"},
+    {"sourceCode": "instance-order", "targetCode": "instance-order", "display": "Instance Order"}
+  ]
+}

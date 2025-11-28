@@ -1,0 +1,126 @@
+{
+  "id": "condition-fhir-to-json-v1",
+  "name": "Condition FHIR to JSON",
+  "version": "1.0.0",
+  "direction": "FHIR_TO_JSON",
+  "sourceType": "Condition",
+  "targetType": "ConditionDTO",
+  "fieldMappings": [
+    {
+      "id": "cond-id-reverse",
+      "sourcePath": "identifier[0].value",
+      "targetPath": "conditionId",
+      "required": true
+    },
+    {
+      "id": "cond-clinical-status-reverse",
+      "sourcePath": "clinicalStatus.coding[0].code",
+      "targetPath": "clinicalStatus"
+    },
+    {
+      "id": "cond-verification-status-reverse",
+      "sourcePath": "verificationStatus.coding[0].code",
+      "targetPath": "verificationStatus"
+    },
+    {
+      "id": "cond-category-reverse",
+      "sourcePath": "category[0].coding[0].code",
+      "targetPath": "category",
+      "condition": "category != null && category.size() > 0"
+    },
+    {
+      "id": "cond-severity-code-reverse",
+      "sourcePath": "severity.coding[0].code",
+      "targetPath": "severityCode",
+      "condition": "severity != null"
+    },
+    {
+      "id": "cond-severity-display-reverse",
+      "sourcePath": "severity.coding[0].display",
+      "targetPath": "severity",
+      "condition": "severity != null"
+    },
+    {
+      "id": "cond-code-snomed-reverse",
+      "sourcePath": "code.coding[0].code",
+      "targetPath": "snomedCode",
+      "condition": "code != null && code.coding.size() > 0"
+    },
+    {
+      "id": "cond-code-snomed-display-reverse",
+      "sourcePath": "code.coding[0].display",
+      "targetPath": "snomedDisplay",
+      "condition": "code != null && code.coding.size() > 0"
+    },
+    {
+      "id": "cond-code-icd10-reverse",
+      "sourcePath": "code.coding[1].code",
+      "targetPath": "icd10Code",
+      "condition": "code != null && code.coding.size() > 1"
+    },
+    {
+      "id": "cond-code-icd10-display-reverse",
+      "sourcePath": "code.coding[1].display",
+      "targetPath": "icd10Display",
+      "condition": "code != null && code.coding.size() > 1"
+    },
+    {
+      "id": "cond-code-text-reverse",
+      "sourcePath": "code.text",
+      "targetPath": "conditionText",
+      "condition": "code != null"
+    },
+    {
+      "id": "cond-bodysite-code-reverse",
+      "sourcePath": "bodySite[0].coding[0].code",
+      "targetPath": "bodySiteCode",
+      "condition": "bodySite != null && bodySite.size() > 0"
+    },
+    {
+      "id": "cond-bodysite-display-reverse",
+      "sourcePath": "bodySite[0].coding[0].display",
+      "targetPath": "bodySiteDisplay",
+      "condition": "bodySite != null && bodySite.size() > 0"
+    },
+    {
+      "id": "cond-patient-id-reverse",
+      "sourcePath": "subject.reference",
+      "targetPath": "patientId",
+      "transformExpression": "value != null && value.startsWith('Patient/') ? value.substring(8) : value",
+      "required": true
+    },
+    {
+      "id": "cond-encounter-id-reverse",
+      "sourcePath": "encounter.reference",
+      "targetPath": "encounterId",
+      "transformExpression": "value != null && value.startsWith('Encounter/') ? value.substring(10) : value",
+      "condition": "encounter != null"
+    },
+    {
+      "id": "cond-onset-datetime-reverse",
+      "sourcePath": "onsetDateTime",
+      "targetPath": "onsetDateTime",
+      "dataType": "dateTime",
+      "condition": "onsetDateTime != null"
+    },
+    {
+      "id": "cond-recorded-date-reverse",
+      "sourcePath": "recordedDate",
+      "targetPath": "recordedDate",
+      "dataType": "date"
+    },
+    {
+      "id": "cond-recorder-id-reverse",
+      "sourcePath": "recorder.reference",
+      "targetPath": "recorderId",
+      "transformExpression": "value != null && value.startsWith('Practitioner/') ? value.substring(13) : value",
+      "condition": "recorder != null"
+    },
+    {
+      "id": "cond-note-reverse",
+      "sourcePath": "note[0].text",
+      "targetPath": "notes",
+      "condition": "note != null && note.size() > 0"
+    }
+  ]
+}

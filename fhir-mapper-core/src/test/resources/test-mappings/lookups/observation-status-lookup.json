@@ -1,0 +1,15 @@
+{
+  "id": "observation-status-lookup",
+  "name": "Observation Status Lookup",
+  "sourceSystem": "internal",
+  "defaultTargetSystem": "http://hl7.org/fhir/observation-status",
+  "bidirectional": false,
+  "mappings": [
+    {"sourceCode": "registered", "targetCode": "registered", "display": "Registered"},
+    {"sourceCode": "preliminary", "targetCode": "preliminary", "display": "Preliminary"},
+    {"sourceCode": "final", "targetCode": "final", "display": "Final"},
+    {"sourceCode": "amended", "targetCode": "amended", "display": "Amended"},
+    {"sourceCode": "corrected", "targetCode": "corrected", "display": "Corrected"},
+    {"sourceCode": "cancelled", "targetCode": "cancelled", "display": "Cancelled"}
+  ]
+}
