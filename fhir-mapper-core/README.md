@@ -1,4 +1,4 @@
-# FHIR Mapper Core
+# FAMLY-CORE — FHIR Automated Mapping LibrarY
 
 A declarative, JSON/Excel-driven transformation framework for converting between custom JSON/POJO formats and HL7 FHIR resources.
 
