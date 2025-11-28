@@ -55,7 +55,41 @@ String json = "{\"patientId\":\"P123\",\"firstName\":\"John\",\"lastName\":\"Doe
 ResourceMapping mapping = registry.findById("patient-json-to-fhir-v1");
 Patient patient = engine.jsonToFhirResource(json, mapping, context, Patient.class);
 ```
+### Loader Output
 
+When the application starts, you'll see:
+```
+=== FHIR Mapper Configuration Loader ===
+Base Path: /app/config
+Validation: STRICT
+
+Loading Lookups from: /app/config/lookups
+  ✓ gender-lookup (JSON)
+  ✓ marital-status-lookup (JSON)
+  ✓ race-text-lookup (Excel: terminology.xlsx)
+  ✓ ethnicity-text-lookup (Excel: terminology.xlsx)
+Loaded 4 lookup tables
+
+Loading Mappings from: /app/config/mappings
+  ✓ patient-json-to-fhir-v1 (JSON) - 47 fields
+  ✓ observation-json-to-fhir-v1 (JSON) - 29 fields
+  ✓ epic-patient-mapping (Excel: epic-mappings.xlsx) - 38 fields
+Loaded 3 resource mappings
+
+Validation Results:
+  ✓ All FHIR paths valid
+  ✓ All lookup references resolved
+  ✓ All expressions syntactically valid
+  ✓ No duplicate mapping IDs
+  ✓ Security scan passed
+
+Registry initialized successfully
+Total: 3 mappings, 4 lookups
+Ready for transformations
+
+Hot Reload: ENABLED
+Watching: /app/config
+```
 ---
 
 ## Excel Support
@@ -87,18 +121,27 @@ All workbooks in the directory are automatically loaded.
 ### Directory Structure
 
 ```
-mappings/
-├── lookups/              # JSON lookups (legacy)
-├── lookups-excel/        # Excel lookup workbooks
-│   ├── standard-terminology.xlsx   # FHIR standard codes
-│   ├── epic-codes.xlsx             # Epic-specific codes
-│   └── custom-codes.xlsx           # Organization codes
-├── json/                 # Manual JSON mappings
-├── excel/                # Excel mapping workbooks
-│   ├── epic-mappings.xlsx          # Epic EMR mappings
-│   ├── cerner-mappings.xlsx        # Cerner EMR mappings
-│   └── lab-mappings.xlsx           # Lab system mappings
-└── excel-generated/      # Auto-generated (cleaned on load)
+project-root/
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   └── resources/
+│   └── test/
+│       └── resources/
+│           └── config/                      # Test mappings & lookups
+├── config/                                  # Runtime configuration (external)
+│   ├── mappings/                            # All mapping files
+│   │   ├── epic-mappings.xlsx               # Multiple mappings per workbook
+│   │   ├── cerner-mappings.xlsx             # Multiple mappings per workbook
+│   │   ├── patient-json-to-fhir-v1.json     # One mapping per JSON file
+│   │   └── observation-json-to-fhir-v1.json
+│   └── lookups/                             # All lookup tables
+│       ├── terminology.xlsx                 # Multiple lookups per workbook
+│       ├── custom-codes.xlsx                # Multiple lookups per workbook
+│       ├── gender-lookup.json               # One lookup per JSON file
+│       └── marital-status-lookup.json
+├── pom.xml
+└── Dockerfile
 ```
 
 ### Excel Mapping Format
@@ -816,27 +859,24 @@ java -jar fhir-mapper-cli.jar validate ./mappings
 
 ```
 your-project/
-├── mappings/
-│   ├── lookups/              # JSON lookup tables
-│   │   ├── gender-lookup.json
-│   │   ├── marital-status-lookup.json
-│   │   └── address-use-lookup.json
-│   ├── lookups-excel/        # Excel lookup workbooks
-│   │   ├── standard-terminology.xlsx
-│   │   └── custom-codes.xlsx
-│   ├── json/                 # JSON resource mappings
-│   │   ├── patient-json-to-fhir.json
-│   │   ├── patient-fhir-to-json.json
-│   │   └── encounter-json-to-fhir.json
-│   ├── excel/                # Excel resource mappings
-│   │   ├── epic-mappings.xlsx
-│   │   └── cerner-mappings.xlsx
-│   └── excel-generated/      # Auto-generated (cleaned on load)
+├── config/
+│   ├── mappings/                            # All mapping files
+│   │   ├── epic-mappings.xlsx               # Multiple mappings per workbook
+│   │   ├── cerner-mappings.xlsx             # Multiple mappings per workbook
+│   │   ├── patient-json-to-fhir-v1.json     # One mapping per JSON file
+│   │   └── observation-json-to-fhir-v1.json
+│   └── lookups/                             # All lookup tables
+│       ├── terminology.xlsx                 # Multiple lookups per workbook
+│       ├── custom-codes.xlsx                # Multiple lookups per workbook
+│       ├── gender-lookup.json               # One lookup per JSON file
+│       └── marital-status-lookup.json
 └── src/
-    └── main/
-        └── java/
-            └── com/example/
-                └── FhirTransformService.java
+│   └── main/
+│       └── java/
+│           └── com/example/
+│               └── FhirTransformService.java
+├── pom.xml
+└── Dockerfile
 ```
 
 **File Naming:**
