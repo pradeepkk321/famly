@@ -186,7 +186,8 @@ public class ExcelConverterCLI {
             System.out.println("  2. Convert Excel to JSON");
             System.out.println("  3. Validate mappings");
             System.out.println("  4. Create template Excel");
-            System.out.println("  5. Exit");
+            System.out.println("  5. Handle Batch Conversion");
+            System.out.println("  6. Exit");
             System.out.print("\nChoice: ");
             
             int choice = scanner.nextInt();
@@ -223,8 +224,25 @@ public class ExcelConverterCLI {
                     createTemplate(templatePath);
                     System.out.println("✓ Template created\n");
                     break;
-                    
                 case 5:
+                	System.out.print("Enter conversion direction (J2E: --json-to-excel or E2J: --excel-to-json): ");
+					String direction = scanner.nextLine();
+					if(direction.equals("J2E")) {
+						direction="--json-to-excel";
+					} else if(direction.equals("E2J")) {
+						direction="--excel-to-json";
+					} else {
+						System.out.println("Invalid direction choice\n");
+						break;
+					}
+					
+					System.out.print("Enter input directory: ");
+					String inputDir = scanner.nextLine();
+					System.out.print("Enter output directory: ");
+					String outputDir = scanner.nextLine();
+					handleBatch(new String[]{"batch", direction, inputDir, outputDir});
+					break;
+                case 6:
                     System.out.println("Goodbye!");
                     scanner.close();
                     return;

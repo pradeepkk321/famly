@@ -10,7 +10,8 @@ import java.util.Map;
  */
 public class PathNavigator {
     
-    public Object getValue(Map<String, Object> data, String path) {
+    @SuppressWarnings("unchecked")
+	public Object getValue(Map<String, Object> data, String path) {
         String[] parts = path.split("\\.");
         Object current = data;
 
@@ -35,7 +36,8 @@ public class PathNavigator {
         return current;
     }
 
-    public void setValue(Map<String, Object> data, String path, Object value) {
+    @SuppressWarnings("unchecked")
+	public void setValue(Map<String, Object> data, String path, Object value) {
         String[] parts = path.split("\\.");
         Map<String, Object> current = data;
 
