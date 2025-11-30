@@ -15,7 +15,7 @@ import io.famly.mapper.core.model.TransformationTrace;
 public class ComplexRealTimeExample {
 	public static void main(String[] args) throws Exception {
 		// Load mappings
-		MappingLoader loader = new MappingLoader("./mappings");
+		MappingLoader loader = new MappingLoader("./config");
 		MappingRegistry registry = loader.loadAll();
 		
 //		testPatientTransformation(registry);
@@ -69,7 +69,7 @@ public class ComplexRealTimeExample {
 		// Setup context
 		TransformationContext context = new TransformationContext();
 		context.setOrganizationId("org-123");
-		context.getSettings().put("mrnSystem", "urn:oid:2.16.840.1.113883.4.1");
+		context.getSettings().put("identifierSystem", "urn:oid:2.16.840.1.113883.4.1");
 		
 		//Enable tracing
 		context.enableTracing();

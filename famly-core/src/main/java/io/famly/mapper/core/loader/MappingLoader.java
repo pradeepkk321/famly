@@ -35,10 +35,11 @@ public class MappingLoader {
     private final boolean strictValidation;
     private final boolean enableExcelSupport;
     private final FhirContext fhirContext;
-    
+
+    private final String mappingsDir;
     private final String lookupsDir;
-    private final String jsonDir;
-    private final String excelDir;
+//    private final String jsonDir;
+//    private final String excelDir;
     private final String excelGeneratedDir;
     
     private int jsonFilesLoaded = 0;
@@ -68,10 +69,13 @@ public class MappingLoader {
         this.validator = new MappingValidator(fhirContext);
         this.enableExcelSupport = enableExcelSupport;
         
+//        this.lookupsDir = basePath + "/lookups";
+//        this.jsonDir = basePath + "/json";
+//        this.excelDir = basePath + "/excel";
+        
+        this.mappingsDir = basePath + "/mappings";
         this.lookupsDir = basePath + "/lookups";
-        this.jsonDir = basePath + "/json";
-        this.excelDir = basePath + "/excel";
-        this.excelGeneratedDir = basePath + "/excel-generated";
+        this.excelGeneratedDir = mappingsDir + "/excel-generated";
     }
 
     public MappingRegistry loadAll() throws IOException {
@@ -148,24 +152,9 @@ public class MappingLoader {
     private Map<String, CodeLookupTable> loadLookupTables() throws IOException {
         Map<String, CodeLookupTable> lookups = new HashMap<>();
         
-        // Load JSON lookups
-        Path lookupsPath = Paths.get(lookupsDir);
-        if (Files.exists(lookupsPath)) {
-            List<Path> jsonFiles = Files.walk(lookupsPath, 1)
-                .filter(p -> p.toString().endsWith(".json"))
-                .collect(Collectors.toList());
-            
-            for (Path file : jsonFiles) {
-                CodeLookupTable lookup = objectMapper.readValue(file.toFile(), CodeLookupTable.class);
-                lookups.put(lookup.getId(), lookup);
-                System.out.println("  ✓ " + lookup.getId() + 
-                        " (JSON: " + file.getFileName() + ")");
-            }
-        }
-        
-        // Load Excel lookups (NEW)
+        // Load Excel lookups if enabled
         if (enableExcelSupport) {
-            Path excelLookupsPath = Paths.get(basePath + "/lookups-excel");
+            Path excelLookupsPath = Paths.get(lookupsDir);
             if (Files.exists(excelLookupsPath)) {
                 List<Path> excelFiles = Files.walk(excelLookupsPath, 1)
                     .filter(p -> p.toString().endsWith(".xlsx"))
@@ -183,6 +172,23 @@ public class MappingLoader {
                 }
             }
         }
+        
+        // Load JSON lookups
+        Path lookupsPath = Paths.get(lookupsDir);
+        if (Files.exists(lookupsPath)) {
+            List<Path> jsonFiles = Files.walk(lookupsPath, 1)
+                .filter(p -> p.toString().endsWith(".json"))
+                .collect(Collectors.toList());
+            
+            for (Path file : jsonFiles) {
+                CodeLookupTable lookup = objectMapper.readValue(file.toFile(), CodeLookupTable.class);
+                lookups.put(lookup.getId(), lookup);
+                System.out.println("  ✓ " + lookup.getId() + 
+                        " (JSON: " + file.getFileName() + ")");
+            }
+        }
+        
+        
         
         return lookups;
     }
@@ -217,42 +223,8 @@ public class MappingLoader {
         List<ResourceMapping> mappings = new ArrayList<>();
         Map<String, String> seenIds = new HashMap<>();
         
-        Path jsonPath = Paths.get(jsonDir);
-        if (Files.exists(jsonPath)) {
-            List<Path> jsonFiles = Files.walk(jsonPath, 1)
-                .filter(p -> p.toString().endsWith(".json"))
-                .collect(Collectors.toList());
-
-            for (Path file : jsonFiles) {
-                try {
-                    ResourceMapping mapping = objectMapper.readValue(file.toFile(), ResourceMapping.class);
-                    
-                    if (seenIds.containsKey(mapping.getId())) {
-                        throw new IOException(
-                            "Duplicate mapping ID '" + mapping.getId() + "' found in: " +
-                            seenIds.get(mapping.getId()) + " and json/" + file.getFileName()
-                        );
-                    }
-                    
-                    mappings.add(mapping);
-                    seenIds.put(mapping.getId(), "json/" + file.getFileName());
-                    jsonFilesLoaded++;
-                    
-                    System.out.println("  ✓ " + mapping.getId() + 
-                        " [" + mapping.getDirection() + "] (JSON: " + file.getFileName() + ")");
-                } catch (Exception e) {
-                    String errorMsg = "Failed to load mapping from " + file + ": " + e.getMessage();
-                    if (strictValidation) {
-                        throw new IOException(errorMsg, e);
-                    } else {
-                        System.err.println("  ✗ " + errorMsg);
-                    }
-                }
-            }
-        }
-        
         if (enableExcelSupport) {
-            Path excelPath = Paths.get(excelDir);
+            Path excelPath = Paths.get(mappingsDir);
             if (Files.exists(excelPath)) {
                 File generatedDir = new File(excelGeneratedDir);
                 if (!generatedDir.exists()) {
@@ -276,7 +248,7 @@ public class MappingLoader {
                             if (seenIds.containsKey(mapping.getId())) {
                                 throw new IOException(
                                     "Duplicate mapping ID '" + mapping.getId() + "' found in: " +
-                                    seenIds.get(mapping.getId()) + " and excel/" + file.getFileName() +
+                                    seenIds.get(mapping.getId()) + " and " + file.getFileName() +
                                     " (sheet: " + mapping.getName() + ")"
                                 );
                             }
@@ -288,7 +260,7 @@ public class MappingLoader {
                                 .writeValue(new File(jsonFilePath), mapping);
                             
                             mappings.add(mapping);
-                            seenIds.put(mapping.getId(), "excel/" + file.getFileName());
+                            seenIds.put(mapping.getId(), file.getFileName().toString());
                             excelFilesLoaded++;
                             
                             System.out.println("    ✓ " + mapping.getId() + 
@@ -308,18 +280,52 @@ public class MappingLoader {
                 }
             }
         }
+        
+        Path jsonPath = Paths.get(mappingsDir);
+        if (Files.exists(jsonPath)) {
+            List<Path> jsonFiles = Files.walk(jsonPath, 1)
+                .filter(p -> p.toString().endsWith(".json"))
+                .collect(Collectors.toList());
+
+            for (Path file : jsonFiles) {
+                try {
+                    ResourceMapping mapping = objectMapper.readValue(file.toFile(), ResourceMapping.class);
+                    
+                    if (seenIds.containsKey(mapping.getId())) {
+                        throw new IOException(
+                            "Duplicate mapping ID '" + mapping.getId() + "' found in: " +
+                            seenIds.get(mapping.getId()) + " and " + file.getFileName()
+                        );
+                    }
+                    
+                    mappings.add(mapping);
+                    seenIds.put(mapping.getId(), file.getFileName().toString());
+                    jsonFilesLoaded++;
+                    
+                    System.out.println("  ✓ " + mapping.getId() + 
+                        " [" + mapping.getDirection() + "] (JSON: " + file.getFileName() + ")");
+                } catch (Exception e) {
+                    String errorMsg = "Failed to load mapping from " + file + ": " + e.getMessage();
+                    if (strictValidation) {
+                        throw new IOException(errorMsg, e);
+                    } else {
+                        System.err.println("  ✗ " + errorMsg);
+                    }
+                }
+            }
+        }
 
         return mappings;
     }
 
     public ResourceMapping loadResourceMapping(String filename) throws IOException {
-        Path jsonFile = Paths.get(jsonDir, filename);
+        Path jsonFile = Paths.get(lookupsDir, filename);
         if (Files.exists(jsonFile)) {
             return objectMapper.readValue(jsonFile.toFile(), ResourceMapping.class);
         }
         
         if (enableExcelSupport) {
-            Path excelFile = Paths.get(excelDir, filename);
+            Path excelFile = Paths.get(lookupsDir, filename);
             if (Files.exists(excelFile)) {
                 List<ResourceMapping> mappings = multiConverter.excelToResourceMappings(excelFile.toString());
                 if (mappings.isEmpty()) {

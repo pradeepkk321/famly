@@ -34,7 +34,7 @@ public class ComprehensiveTransformationTests {
     
     @BeforeEach
     public void setup() throws Exception {
-        MappingLoader loader = new MappingLoader("./src/test/resources/test-mappings");
+        MappingLoader loader = new MappingLoader("./src/test/resources/test-config");
         registry = loader.loadAll();
         engine = new TransformationEngine(registry, FhirContext.forR4());
         
