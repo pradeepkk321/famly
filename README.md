@@ -10,7 +10,13 @@ A declarative, Excel/JSON-driven engine for transforming data to and from FHIR �
 
 ## Overview
 
-FAMLY eliminates the need to write Java transformation code for each FHIR resource mapping. Instead, you define mappings in JSON or Excel configuration files with support for:
+FAMLY is a lightweight, declarative transformation engine designed to simplify how teams map data to and from FHIR. Instead of writing Java code for each field, mappings are defined in JSON or Excel, making the process faster, more consistent, and easier to maintain across projects and teams.
+
+The library was created to address real-world challenges seen in ETL pipelines, interoperability work, and multi-source integrations—situations where onboarding a new data provider often meant rewriting large amounts of repetitive transformation code. FAMLY removes that burden by offering a configuration-driven approach that adapts easily to new schemas, systems, and workflows.
+
+Whether you're integrating healthcare data, performing FHIR migrations, or building complex transformation pipelines, FAMLY provides a flexible and dependable foundation without the boilerplate. It is designed to fit naturally into existing systems, offering a clear, maintainable way to manage mappings at scale.
+
+### Key Features
 
 - **Bidirectional transformations** (JSON ↔ FHIR)
 - **Excel-based configuration** for business users (mappings and lookup tables)
